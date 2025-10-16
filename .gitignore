@@ -1,0 +1,243 @@
+# ==========================
+# Vooky Project - Git Ignore
+# ==========================
+
+# ====================================
+# BACKEND (Laravel - vooky-back/)
+# ====================================
+
+# Laravel Framework
+vooky-back/vendor/
+vooky-back/node_modules/
+vooky-back/.env
+vooky-back/.env.backup
+vooky-back/.phpunit.result.cache
+vooky-back/Homestead.json
+vooky-back/Homestead.yaml
+vooky-back/npm-debug.log
+vooky-back/yarn-error.log
+
+# Laravel Storage
+vooky-back/storage/*.key
+vooky-back/storage/framework/cache/data/*
+vooky-back/storage/framework/sessions/*
+vooky-back/storage/framework/testing/*
+vooky-back/storage/framework/views/*
+vooky-back/storage/logs/*
+vooky-back/storage/app/public/*
+!vooky-back/storage/framework/cache/.gitignore
+!vooky-back/storage/framework/sessions/.gitignore
+!vooky-back/storage/framework/testing/.gitignore
+!vooky-back/storage/framework/views/.gitignore
+!vooky-back/storage/logs/.gitignore
+!vooky-back/storage/app/.gitignore
+!vooky-back/storage/app/public/.gitignore
+
+# Laravel Public Storage Link
+vooky-back/public/storage
+vooky-back/public/hot
+
+# Bootstrap Cache
+vooky-back/bootstrap/cache/*
+!vooky-back/bootstrap/cache/.gitignore
+
+# ====================================
+# FRONTEND (Vue 3 - vooky-front/)
+# ====================================
+
+# Dependencies
+vooky-front/node_modules/
+vooky-front/.pnp
+vooky-front/.pnp.js
+
+# Build Output
+vooky-front/dist/
+vooky-front/dist-ssr/
+vooky-front/*.local
+
+# Environment Variables
+vooky-front/.env
+vooky-front/.env.local
+vooky-front/.env.*.local
+vooky-front/.env.development.local
+vooky-front/.env.test.local
+vooky-front/.env.production.local
+
+# Logs
+vooky-front/npm-debug.log*
+vooky-front/yarn-debug.log*
+vooky-front/yarn-error.log*
+vooky-front/pnpm-debug.log*
+vooky-front/lerna-debug.log*
+
+# Editor/IDE Cache
+vooky-front/.vscode/*
+!vooky-front/.vscode/extensions.json
+vooky-front/.idea
+vooky-front/.DS_Store
+vooky-front/*.suo
+vooky-front/*.ntvs*
+vooky-front/*.njsproj
+vooky-front/*.sln
+vooky-front/*.sw?
+
+# Vite
+vooky-front/.vite
+vooky-front/vite.config.js.timestamp-*
+vooky-front/vite.config.ts.timestamp-*
+
+# ====================================
+# ROOT LEVEL FILES
+# ====================================
+
+# Laragon/XAMPP
+index.php
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ====================================
+# GENERAL IDE/EDITOR FILES
+# ====================================
+
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+
+# JetBrains IDEs (PhpStorm, WebStorm, etc.)
+.idea/
+*.iml
+*.iws
+.idea_modules/
+*.swp
+*.swo
+*~
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# ====================================
+# TEMPORARY & SYSTEM FILES
+# ====================================
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.cache
+*.bak
+*.swp
+*.swo
+
+# Compressed files
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+
+# ====================================
+# DOCUMENTATION BACKUPS
+# ====================================
+
+# Keep implementation docs but ignore backups
+*.md.bak
+*.md.backup
+
+# ====================================
+# CUSTOM PROJECT FILES
+# ====================================
+
+# Database dumps (if any)
+*.sql
+*.sqlite
+*.db
+
+# Private/sensitive files
+private/
+secrets/
+credentials/
+
+# Test coverage reports
+coverage/
+.nyc_output/
+
+# ====================================
+# PACKAGE MANAGER LOCKS (Optional)
+# ====================================
+
+# Uncomment if you want to ignore lock files
+# vooky-back/composer.lock
+# vooky-front/package-lock.json
+# vooky-front/yarn.lock
+# vooky-front/pnpm-lock.yaml
+
+# ====================================
+# PRODUCTION BUILDS
+# ====================================
+
+# Keep source, ignore builds
+build/
+public/build/
+public/hot
+public/storage
+
+# ====================================
+# MISC
+# ====================================
+
+# Debug files
+debug.log
+*.stackdump
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# NPM
+.npm
+.eslintcache
+
+# Optional npm cache directory
+.npm/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn
+.yarn-integrity
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
