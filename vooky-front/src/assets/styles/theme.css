@@ -1,0 +1,221 @@
+/**
+ * VOOKY - Sistema de Variables de Tema
+ * 
+ * Este archivo centraliza todos los colores y variables del tema.
+ * ACTUALIZAR después de subir el logo con los colores de la marca.
+ */
+
+:root {
+  /* ============================================
+     COLORES PRINCIPALES - VOOKY BRAND
+     Extraídos del logo oficial
+     ============================================ */
+  
+  /* Color Primario - Verde Lima (Libro) */
+  --color-primary: #8BC34A;
+  --color-primary-light: #AED581;
+  --color-primary-dark: #689F38;
+  --color-primary-rgb: 139, 195, 74; /* Para transparencias */
+  
+  /* Color Secundario - Rosa Fucsia (VO) */
+  --color-secondary: #FF5598;
+  --color-secondary-light: #FF80AB;
+  --color-secondary-dark: #F50057;
+  
+  /* Color de Acento - Naranja (O) */
+  --color-accent: #FFA726;
+  --color-accent-light: #FFB74D;
+  --color-accent-dark: #F57C00;
+  
+  /* ============================================
+     COLORES DE ESTADO (Mantener estándar)
+     ============================================ */
+  
+  --color-success: #27ae60;
+  --color-success-light: #58d68d;
+  --color-success-dark: #1e8449;
+  --color-success-bg: #d5f4e6;
+  
+  --color-warning: #f39c12;
+  --color-warning-light: #f5b041;
+  --color-warning-dark: #d68910;
+  --color-warning-bg: #fff3cd;
+  
+  --color-danger: #e74c3c;
+  --color-danger-light: #ec7063;
+  --color-danger-dark: #c0392b;
+  --color-danger-bg: #fadbd8;
+  
+  --color-info: #17a2b8;
+  --color-info-light: #48c9b0;
+  --color-info-dark: #138496;
+  --color-info-bg: #d1ecf1;
+  
+  /* ============================================
+     COLORES DE TEXTO
+     ============================================ */
+  
+  --text-primary: #2c3e50;
+  --text-secondary: #7f8c8d;
+  --text-light: #95a5a6;
+  --text-white: #ffffff;
+  --text-dark: #34495e;
+  
+  /* ============================================
+     COLORES DE FONDO
+     ============================================ */
+  
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #ecf0f1;
+  --bg-dark: #2c3e50;
+  --bg-overlay: rgba(0, 0, 0, 0.5);
+  
+  /* ============================================
+     DEGRADADOS - VOOKY BRAND
+     ============================================ */
+  
+  --gradient-primary: linear-gradient(135deg, #8BC34A 0%, #689F38 100%);
+  --gradient-secondary: linear-gradient(135deg, #FF5598 0%, #F50057 100%);
+  --gradient-accent: linear-gradient(135deg, #FFA726 0%, #F57C00 100%);
+  --gradient-success: linear-gradient(135deg, var(--color-success) 0%, var(--color-success-dark) 100%);
+  --gradient-hero: linear-gradient(135deg, #8BC34A 0%, #29B6F6 50%, #FF5598 100%);
+  --gradient-fun: linear-gradient(135deg, #FF5598 0%, #FFA726 50%, #29B6F6 100%);
+  
+  /* ============================================
+     SOMBRAS Y EFECTOS
+     ============================================ */
+  
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+  --shadow-primary: 0 10px 20px rgba(var(--color-primary-rgb), 0.3);
+  --shadow-accent: 0 10px 20px rgba(231, 76, 60, 0.3);
+  
+  /* ============================================
+     BORDES Y RADIOS
+     ============================================ */
+  
+  --border-radius-sm: 6px;
+  --border-radius-md: 12px;
+  --border-radius-lg: 16px;
+  --border-radius-xl: 24px;
+  --border-radius-full: 9999px;
+  
+  --border-width: 1px;
+  --border-width-thick: 2px;
+  --border-color: #e0e0e0;
+  --border-color-dark: #bdc3c7;
+  
+  /* ============================================
+     ESPACIADO
+     ============================================ */
+  
+  --spacing-xs: 0.25rem;  /* 4px */
+  --spacing-sm: 0.5rem;   /* 8px */
+  --spacing-md: 1rem;     /* 16px */
+  --spacing-lg: 1.5rem;   /* 24px */
+  --spacing-xl: 2rem;     /* 32px */
+  --spacing-2xl: 3rem;    /* 48px */
+  --spacing-3xl: 4rem;    /* 64px */
+  
+  /* ============================================
+     TIPOGRAFÍA
+     ============================================ */
+  
+  --font-family-base: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-family-heading: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-family-mono: 'Courier New', monospace;
+  
+  --font-size-xs: 0.75rem;   /* 12px */
+  --font-size-sm: 0.875rem;  /* 14px */
+  --font-size-base: 1rem;    /* 16px */
+  --font-size-lg: 1.125rem;  /* 18px */
+  --font-size-xl: 1.25rem;   /* 20px */
+  --font-size-2xl: 1.5rem;   /* 24px */
+  --font-size-3xl: 1.875rem; /* 30px */
+  --font-size-4xl: 2.25rem;  /* 36px */
+  
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* ============================================
+     TRANSICIONES Y ANIMACIONES
+     ============================================ */
+  
+  --transition-fast: 150ms ease-in-out;
+  --transition-base: 250ms ease-in-out;
+  --transition-slow: 350ms ease-in-out;
+  
+  /* ============================================
+     Z-INDEX
+     ============================================ */
+  
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  
+  /* ============================================
+     GAME UI - Colores específicos del juego
+     ============================================ */
+  
+  --game-correct: var(--color-success);
+  --game-incorrect: var(--color-danger);
+  --game-neutral: #95a5a6;
+  --game-combo-bg: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+  --game-score-excellent: var(--color-success);
+  --game-score-good: var(--color-warning);
+  --game-score-practice: var(--color-danger);
+}
+
+/* ============================================
+   MODO OSCURO (Opcional - Para implementar después)
+   ============================================ */
+
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #93BF36;
+    --bg-secondary: #277944;
+    --text-primary: #1f1f1f;
+    --text-secondary: #454545;
+  }
+}
+
+/* ============================================
+   CLASES UTILITARIAS
+   ============================================ */
+
+.text-primary { color: var(--color-primary); }
+.text-secondary { color: var(--color-secondary); }
+.text-accent { color: var(--color-accent); }
+.text-success { color: var(--color-success); }
+.text-warning { color: var(--color-warning); }
+.text-danger { color: var(--color-danger); }
+.text-info { color: var(--color-info); }
+
+.bg-primary { background-color: var(--color-primary); }
+.bg-secondary { background-color: var(--color-secondary); }
+.bg-accent { background-color: var(--color-accent); }
+.bg-success { background-color: var(--color-success); }
+.bg-warning { background-color: var(--color-warning); }
+.bg-danger { background-color: var(--color-danger); }
+.bg-info { background-color: var(--color-info); }
+
+.gradient-primary { background: var(--gradient-primary); }
+.gradient-secondary { background: var(--gradient-secondary); }
+.gradient-accent { background: var(--gradient-accent); }
+.gradient-hero { background: var(--gradient-hero); }
+
+.shadow-sm { box-shadow: var(--shadow-sm); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+.shadow-xl { box-shadow: var(--shadow-xl); }

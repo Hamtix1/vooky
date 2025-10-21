@@ -71,6 +71,12 @@ export function useGameAudio() {
       volume: 0.3,
       preload: true,
       onloaderror: (id, error) => console.warn('Error loading ui-click.mp3:', error)
+    }),
+    lastQuestion: new Howl({
+      src: ['/sounds/ultima-pregunta.mp3'],
+      volume: 0.8,
+      preload: true,
+      onloaderror: (id, error) => console.warn('Error loading ultima-pregunta.mp3:', error)
     })
   };
   
@@ -163,6 +169,19 @@ export function useGameAudio() {
       sounds.uiClick.play();
     } catch (error) {
       console.warn('Error playing UI click sound:', error);
+    }
+  }
+  
+  /**
+   * Reproduce sonido de última pregunta
+   */
+  function playLastQuestionSound() {
+    initializeAudio();
+    try {
+      sounds.lastQuestion.play();
+      console.log('🔊 Playing last question sound');
+    } catch (error) {
+      console.warn('Error playing last question sound:', error);
     }
   }
   
@@ -289,6 +308,7 @@ export function useGameAudio() {
     playIncorrectSound,
     playPowerupSound,
     playUIClick,
+    playLastQuestionSound,
     
     // Background music
     startBackgroundMusic,

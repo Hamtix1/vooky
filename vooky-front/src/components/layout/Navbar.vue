@@ -2,10 +2,7 @@
   <nav class="navbar">
     <div class="navbar-container">
       <div class="navbar-brand">
-        <router-link :to="{ name: 'Home' }" class="brand-link">
-          <div class="brand-icon">🎮</div>
-          <span class="brand-text">Vooky</span>
-        </router-link>
+        <AppLogo size="medium" :clickable="true" :showText="true" />
       </div>
 
       <ul class="navbar-links">
@@ -21,6 +18,20 @@
             <router-link :to="{ name: 'Courses' }" class="nav-link">
               <font-awesome-icon icon="book" class="link-icon" />
               <span>Cursos</span>
+            </router-link>
+          </li>
+          
+          <li>
+            <router-link :to="{ name: 'Ranking' }" class="nav-link">
+              <font-awesome-icon icon="trophy" class="link-icon" />
+              <span>Ranking</span>
+            </router-link>
+          </li>
+          
+          <li v-if="isAdmin">
+            <router-link :to="{ name: 'BadgeManagement' }" class="nav-link">
+              <font-awesome-icon icon="trophy" class="link-icon" />
+              <span>Insignias</span>
             </router-link>
           </li>
           
@@ -41,7 +52,7 @@
       </ul>
 
       <div class="navbar-user" v-if="isAuthenticated">
-        <div class="user-info">
+        <div class="user-info" @click="goToProfile">
           <div class="user-avatar">
             {{ user?.name?.charAt(0).toUpperCase() }}
           </div>
@@ -60,6 +71,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
+import AppLogo from '@/components/common/AppLogo.vue'
 
 // Instanciar el store y el router
 const auth = useAuthStore()
@@ -79,12 +91,17 @@ const handleLogout = async () => {
   // Redirige al usuario a la página de Login
   router.push({ name: 'Login' })
 }
+
+// Función para ir al perfil
+const goToProfile = () => {
+  router.push({ name: 'UserProfile' })
+}
 </script>
 
 <style scoped>
 .navbar {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(135deg, #8BC34A 0%, #29B6F6 100%);
+  box-shadow: 0 4px 20px rgba(139, 195, 74, 0.3);
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -190,9 +207,10 @@ const handleLogout = async () => {
 
 .nav-link.router-link-exact-active {
   color: white;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
   font-weight: 700;
-  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3);
+  border-bottom: 3px solid #FFA726;
 }
 
 .link-icon {
@@ -200,14 +218,14 @@ const handleLogout = async () => {
 }
 
 .login-link {
-  background: rgba(255, 215, 0, 0.2);
-  border: 2px solid rgba(255, 215, 0, 0.5);
+  background: rgba(255, 85, 152, 0.2);
+  border: 2px solid rgba(255, 85, 152, 0.5);
 }
 
 .login-link:hover {
-  background: rgba(255, 215, 0, 0.3);
-  border-color: #FFD700;
-  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+  background: rgba(255, 85, 152, 0.3);
+  border-color: #FF5598;
+  box-shadow: 0 4px 15px rgba(255, 85, 152, 0.4);
 }
 
 .navbar-user {
@@ -225,20 +243,28 @@ const handleLogout = async () => {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 50px;
   backdrop-filter: blur(10px);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.user-info:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
 }
 
 .user-avatar {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  background: linear-gradient(135deg, #FFA726 0%, #FF5598 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 800;
   font-size: 1.2rem;
-  color: #2c3e50;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  color: white;
+  box-shadow: 0 4px 10px rgba(255, 167, 38, 0.4);
 }
 
 .user-name {

@@ -14,6 +14,9 @@ use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\LessonGameController;
+use App\Http\Controllers\UserProfileController;
+use App\Http\Controllers\BadgeController;
+use App\Http\Controllers\StatsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,6 +28,9 @@ use App\Http\Controllers\LessonGameController;
 // Cualquiera puede intentar iniciar sesión.
 Route::post('/login', [AuthController::class, 'login']);
 
+// Estadísticas públicas de la plataforma
+Route::get('/stats/public', [StatsController::class, 'public']);
+
 
 // --- RUTAS PROTEGIDAS POR AUTENTICACIÓN ---
 // Solo los usuarios que han iniciado sesión (admins y parents) pueden acceder a estas rutas.
@@ -33,6 +39,15 @@ Route::middleware('auth:sanctum')->group(function () {
     // Rutas de autenticación para usuarios logueados
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Rutas de perfil de usuario
+    Route::get('/profile', [UserProfileController::class, 'show']);
+    Route::put('/profile', [UserProfileController::class, 'update']);
+    Route::get('/profile/ranking', [UserProfileController::class, 'myRanking']);
+    Route::get('/profile/badges', [BadgeController::class, 'userBadges']);
+    
+    // Ranking global (disponible para todos los usuarios autenticados)
+    Route::get('/ranking', [UserProfileController::class, 'ranking']);
 
     // --- RUTAS SOLO PARA ADMINISTRADORES ---
     // Solo los usuarios con rol 'admin' pueden acceder a este grupo.
@@ -58,6 +73,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('images', ImageController::class);
     Route::apiResource('audios', AudioController::class);
     Route::apiResource('questions', QuestionController::class);
+    
+    // Gestión de insignias (CRUD completo para admin)
+    Route::get('badges', [BadgeController::class, 'all']);
+    Route::get('courses/{course}/badges', [BadgeController::class, 'index']);
+    Route::post('badges', [BadgeController::class, 'store']);
+    Route::get('badges/{badge}', [BadgeController::class, 'show']);
+    Route::put('badges/{badge}', [BadgeController::class, 'update']);
+    Route::delete('badges/{badge}', [BadgeController::class, 'destroy']);
+    
+    // Estadísticas del dashboard (solo admin)
+    Route::get('stats/dashboard', [StatsController::class, 'dashboard']);
     });
 
     // --- RUTAS PARA USUARIOS GENERALES (PARENTS) ---
@@ -81,6 +107,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('lessons/{lesson}/questions', [LessonGameController::class, 'getQuestions']);
     Route::post('lessons/{lesson}/result', [LessonGameController::class, 'saveResult']);
     Route::get('lessons/{lesson}/progress', [LessonGameController::class, 'getProgress']);
+    
+    // Rutas de insignias para usuarios (solo lectura)
+    Route::get('users/{user}/courses/{course}/badges', [BadgeController::class, 'userBadges']);
     
     
     // Por ahora, para máxima seguridad, hemos puesto todo bajo el control del admin.

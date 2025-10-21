@@ -38,17 +38,17 @@ export function useScoring() {
   
   // Multiplicador de combo calculado
   const comboMultiplier = computed(() => {
-    if (currentCombo.value >= 5) return 3.0;
-    if (currentCombo.value >= 4) return 2.5;
-    if (currentCombo.value >= 3) return 2.0;
-    if (currentCombo.value >= 2) return 1.5;
+    if (currentCombo.value >= 5) return 2;
+    if (currentCombo.value >= 4) return 1.75;
+    if (currentCombo.value >= 3) return 1.5;
+    if (currentCombo.value >= 2) return 1.25;
     return 1.0;
   });
   
   // Accuracy (precisión)
   const accuracy = computed(() => {
     const total = correctAnswers.value + incorrectAnswers.value;
-    return total > 0 ? (correctAnswers.value / total) * 100 : 0;
+    return total > 0 ? (correctAnswers.value / total) * 100: 0;
   });
   
   /**
@@ -64,21 +64,21 @@ export function useScoring() {
   function calculateTimeBonus(): { multiplier: number; label: string } {
     const elapsed = (Date.now() - questionStartTime.value) / 1000;
     
-    if (elapsed < 1.5) {
+    if (elapsed < 1.8) {
       speedAnswers.value++;
-      return { multiplier: 2.0, label: '⚡ MUY RÁPIDO' };
+      return { multiplier: 1, label: '⚡ MUY RÁPIDO' };
     }
-    if (elapsed < 3) {
+    if (elapsed < 2.2) {
       speedAnswers.value++;
-      return { multiplier: 1.5, label: '✨ RÁPIDO' };
+      return { multiplier: 0.5, label: '✨ RÁPIDO' };
     }
-    if (elapsed < 5) {
+    if (elapsed < 2) {
       speedAnswers.value = 0;
-      return { multiplier: 1.0, label: 'NORMAL' };
+      return { multiplier: 0, label: 'NORMAL' };
     }
     
     speedAnswers.value = 0;
-    return { multiplier: 0.8, label: 'LENTO' };
+    return { multiplier: -1, label: 'LENTO' };
   }
   
   /**
@@ -96,7 +96,7 @@ export function useScoring() {
     }
     
     // Calcular puntos
-    const basePoints = 100;
+    const basePoints = 2;
     const timeBonus = calculateTimeBonus();
     const comboMult = comboMultiplier.value;
     
@@ -104,30 +104,15 @@ export function useScoring() {
     const bonuses: string[] = [];
     let bonusMultiplier = 1.0;
     
-    // Bonus por primera vez perfecta
-    if (correctAnswers.value === 1) {
-      bonuses.push('🎯 FIRST BLOOD');
-      bonusMultiplier += 0.25;
-    }
-    
     // Bonus por combo alto
-    if (currentCombo.value === 5) {
-      bonuses.push('🔥 COMBO x5!');
-      bonusMultiplier += 0.5;
-    } else if (currentCombo.value === 10) {
-      bonuses.push('💥 MEGA COMBO x10!');
-      bonusMultiplier += 1.0;
-    }
-    
-    // Bonus por racha rápida
-    if (speedAnswers.value >= 3) {
-      bonuses.push('⚡ SPEED DEMON');
-      bonusMultiplier += 0.3;
-    }
-    
+    if (currentCombo.value === 15) {
+      bonuses.push('💥 COMBO x 15!');
+      bonusMultiplier = 2;
+    } 
+        
     // Calcular puntos finales
     const points = Math.floor(
-      basePoints * timeBonus.multiplier * comboMult * bonusMultiplier
+      basePoints * comboMult * bonusMultiplier + timeBonus.multiplier
     );
     
     score.value += points;
@@ -137,7 +122,7 @@ export function useScoring() {
       basePoints,
       timeMultiplier: timeBonus.multiplier,
       comboMultiplier: comboMult,
-      comboLevel: currentCombo.value,
+      comboLevel: currentCombo.value, 
       bonuses
     };
   }
@@ -163,26 +148,7 @@ export function useScoring() {
     
     // Perfect Run - Sin errores
     if (perfectStreak.value && totalQuestions.value > 0) {
-      bonus += 1000;
-      achievements.push('🏆 PERFECT RUN');
-    }
-    
-    // Speed Master - Promedio < 2 segundos
-    if (speedAnswers.value >= totalQuestions.value * 0.7) {
-      bonus += 500;
-      achievements.push('⚡ SPEED MASTER');
-    }
-    
-    // Combo King - Combo máximo >= 5
-    if (maxCombo.value >= 5) {
-      bonus += 300;
-      achievements.push('🔥 COMBO KING');
-    }
-    
-    // High Accuracy - > 90% de aciertos
-    if (accuracy.value >= 90) {
-      bonus += 200;
-      achievements.push('🎯 SHARPSHOOTER');
+      bonus += 10
     }
     
     score.value += bonus;

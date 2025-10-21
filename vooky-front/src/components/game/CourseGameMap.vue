@@ -3,13 +3,9 @@
     <!-- Loading Overlay -->
     <div v-if="isLoading" class="loading-overlay">
       <div class="loading-content">
-        <div class="loading-spinner">
-          <div class="spinner-ring"></div>
-          <div class="spinner-ring"></div>
-          <div class="spinner-ring"></div>
-        </div>
+        <AppLogo size="large" :clickable="false" :showText="true" />
         <h2 class="loading-title">Cargando Mapa</h2>
-        <p class="loading-text">Preparando tu aventura...</p>
+        <p class="loading-text">Preparando tu aventura</p>
         <div class="loading-dots">
           <span></span>
           <span></span>
@@ -32,10 +28,16 @@
               <span class="progress-percentage">{{ Math.round(overallProgress) }}%</span>
             </div>
           </div>
-          <span class="progress-text">
-            <font-awesome-icon icon="star" class="icon-star" />
-            {{ completedLessons }} / {{ totalLessons }}
-          </span>
+          <div class="stats-row">
+            <span class="progress-text">
+              <font-awesome-icon icon="star" class="icon-star" />
+              {{ completedLessons }} / {{ totalLessons }}
+            </span>
+            <span class="score-text" v-if="completedLessons > 0">
+              <font-awesome-icon icon="trophy" class="icon-trophy" />
+              {{ totalGameScore }} pts
+            </span>
+          </div>
         </div>
       </div>
       <button @click="toggleFullscreen" class="btn-fullscreen" :title="isFullscreen ? 'Salir de pantalla completa (Esc)' : 'Pantalla completa'">
@@ -80,9 +82,9 @@
           <!-- Gradientes mejorados -->
           <defs>
             <linearGradient id="progressGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
-              <stop offset="50%" style="stop-color:#3498db;stop-opacity:1" />
-              <stop offset="100%" style="stop-color:#2ecc71;stop-opacity:1" />
+              <stop offset="0%" style="stop-color:#8BC34A;stop-opacity:1" />
+              <stop offset="50%" style="stop-color:#29B6F6;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#FF5598;stop-opacity:1" />
             </linearGradient>
             <filter id="glow">
               <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
@@ -114,7 +116,8 @@
           
           <!-- Número o icono del nodo -->
           <div class="node-circle">
-            <span v-if="node.completed" class="node-icon">⭐</span>
+            <div class="node-circle-inner"></div>
+            <span v-if="node.completed" class="node-icon">{{ getStarsForAccuracy(node.accuracy) }}</span>
             <span v-else-if="!node.available" class="node-icon">🔒</span>
             <span v-else class="node-number">{{ index + 1 }}</span>
           </div>
@@ -127,10 +130,37 @@
                 <span class="detail-badge">{{ getLessonTypeLabel(node.lesson.content_type) }}</span>
                 <span v-if="node.lesson.dia" class="detail-badge">📅 Día {{ node.lesson.dia }}</span>
               </div>
-              <div v-if="node.completed && node.score !== null" class="score-display">
-                <font-awesome-icon icon="trophy" class="trophy-icon" />
-                <span class="score-value">{{ node.score }} pts</span>
+              
+              <!-- Métricas de rendimiento -->
+              <div v-if="node.completed" class="performance-stats">
+                <div class="stat-row">
+                  <div class="stat-item primary">
+                    <font-awesome-icon icon="trophy" class="stat-icon" />
+                    <div class="stat-content">
+                      <span class="stat-label">Puntuación</span>
+                      <span class="stat-value">{{ node.gameScore?.toLocaleString() || 0 }} pts</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="stat-row secondary">
+                  <div class="stat-item">
+                    <font-awesome-icon icon="check-circle" class="stat-icon" />
+                    <div class="stat-content">
+                      <span class="stat-label">Último intento</span>
+                      <span class="stat-value">{{ node.correctAnswers }}/{{ node.totalQuestions }}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="stat-row stars">
+                  <div class="stat-item">
+                    <div class="star-rating">
+                      <span class="stars-display">{{ getStarsForAccuracy(node.accuracy) }}</span>
+                      <span class="accuracy-text">{{ node.accuracy }}% de aciertos</span>
+                    </div>
+                  </div>
+                </div>
               </div>
+              
               <button 
                 v-if="node.available" 
                 class="btn-play"
@@ -162,6 +192,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import LessonGame from '@/components/game/LessonGame.vue';
+import AppLogo from '@/components/common/AppLogo.vue';
 import { getLessonProgress } from '@/services/lessonGameService';
 import type { Course, Lesson as BaseLesson } from '@/services/courseService';
 
@@ -185,7 +216,10 @@ interface LessonNode {
   completed: boolean;
   available: boolean;
   current: boolean;
-  score: number | null;
+  gameScore: number | null; // Puntuación del juego con combos (puede ser miles de puntos)
+  accuracy: number | null; // Porcentaje de aciertos (0-100)
+  correctAnswers: number | null; // Preguntas correctas del último intento
+  totalQuestions: number | null; // Total de preguntas del último intento
 }
 
 const props = defineProps<{
@@ -241,19 +275,66 @@ const overallProgress = computed(() =>
   totalLessons.value > 0 ? (completedLessons.value / totalLessons.value) * 100 : 0
 );
 
+// Puntaje total acumulado (suma de game_scores)
+const totalGameScore = computed(() => {
+  return lessonNodes.value
+    .filter(node => node.completed && node.gameScore !== null)
+    .reduce((sum, node) => sum + (node.gameScore || 0), 0);
+});
+
+// Puntaje máximo posible (100 por cada lección completada)
+const maxPossibleScore = computed(() => completedLessons.value * 100);
+
 const pathData = computed(() => {
   if (lessonNodes.value.length < 2) return '';
   
-  let path = `M ${lessonNodes.value[0].x + 30} ${lessonNodes.value[0].y + 30}`;
+  // Empezar desde el centro del primer nodo
+  let path = `M ${lessonNodes.value[0].x + 35} ${lessonNodes.value[0].y + 35}`;
   
   for (let i = 1; i < lessonNodes.value.length; i++) {
     const current = lessonNodes.value[i];
     const prev = lessonNodes.value[i - 1];
     
-    // Crear curvas suaves entre nodos
-    const midX = (prev.x + current.x) / 2 + 30;
+    // Centro de cada nodo
+    const prevCenterX = prev.x + 35;
+    const prevCenterY = prev.y + 35;
+    const currCenterX = current.x + 35;
+    const currCenterY = current.y + 35;
     
-    path += ` Q ${midX} ${prev.y + 30}, ${current.x + 30} ${current.y + 30}`;
+    // Determinar el tipo de conexión según posición
+    const prevPos = (i - 1) % 4;
+    const currPos = i % 4;
+    
+    // Centro a Centro (posición 1→2 o 3→0): CURVA PRONUNCIADA
+    const isCenterToCenter = (prevPos === 1 && currPos === 2) || (prevPos === 3 && currPos === 0);
+    
+    // Extremo a Centro o Centro a Extremo: LÍNEA RECTA
+    const isExtremeToCenter = (prevPos === 0 || prevPos === 2) && (currPos === 1 || currPos === 3);
+    const isCenterToExtreme = (prevPos === 1 || prevPos === 3) && (currPos === 0 || currPos === 2);
+    
+    if (isExtremeToCenter || isCenterToExtreme) {
+      // Línea recta para conexiones a/desde centro
+      path += ` L ${currCenterX} ${currCenterY}`;
+    } else if (isCenterToCenter) {
+      // Curva MUY pronunciada para centro a centro (cambio de dirección)
+      const dx = currCenterX - prevCenterX;
+      const dy = currCenterY - prevCenterY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx);
+      
+      const controlDistance = distance * 20; // Factor alto para curva pronunciada
+      
+      const cp1x = prevCenterX + Math.cos(angle) * controlDistance;
+      const cp1y = prevCenterY + Math.sin(angle) * controlDistance;
+      
+      const cp2x = currCenterX - Math.cos(angle) * controlDistance;
+      const cp2y = currCenterY - Math.sin(angle) * controlDistance;
+      
+      path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${currCenterX} ${currCenterY}`;
+    } else {
+      // Fallback: línea recta
+      path += ` L ${currCenterX} ${currCenterY}`;
+    }
   }
   
   return path;
@@ -267,15 +348,46 @@ const progressPathData = computed(() => {
   
   if (lastCompletedIndex < 0) return '';
   
-  let path = `M ${lessonNodes.value[0].x + 30} ${lessonNodes.value[0].y + 30}`;
+  // Empezar desde el centro del primer nodo
+  let path = `M ${lessonNodes.value[0].x + 35} ${lessonNodes.value[0].y + 35}`;
   
   for (let i = 1; i <= lastCompletedIndex; i++) {
     const current = lessonNodes.value[i];
     const prev = lessonNodes.value[i - 1];
     
-    const midX = (prev.x + current.x) / 2 + 30;
+    // Centro de cada nodo
+    const prevCenterX = prev.x + 35;
+    const prevCenterY = prev.y + 35;
+    const currCenterX = current.x + 35;
+    const currCenterY = current.y + 35;
     
-    path += ` Q ${midX} ${prev.y + 30}, ${current.x + 30} ${current.y + 30}`;
+    const prevPos = (i - 1) % 4;
+    const currPos = i % 4;
+    
+    const isCenterToCenter = (prevPos === 1 && currPos === 2) || (prevPos === 3 && currPos === 0);
+    const isExtremeToCenter = (prevPos === 0 || prevPos === 2) && (currPos === 1 || currPos === 3);
+    const isCenterToExtreme = (prevPos === 1 || prevPos === 3) && (currPos === 0 || currPos === 2);
+    
+    if (isExtremeToCenter || isCenterToExtreme) {
+      path += ` L ${currCenterX} ${currCenterY}`;
+    } else if (isCenterToCenter) {
+      const dx = currCenterX - prevCenterX;
+      const dy = currCenterY - prevCenterY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx);
+      
+      const controlDistance = distance * 0.85;
+      
+      const cp1x = prevCenterX + Math.cos(angle) * controlDistance;
+      const cp1y = prevCenterY + Math.sin(angle) * controlDistance;
+      
+      const cp2x = currCenterX - Math.cos(angle) * controlDistance;
+      const cp2y = currCenterY - Math.sin(angle) * controlDistance;
+      
+      path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${currCenterX} ${currCenterY}`;
+    } else {
+      path += ` L ${currCenterX} ${currCenterY}`;
+    }
   }
   
   return path;
@@ -309,7 +421,10 @@ async function loadLessonProgress() {
       completed,
       available,
       current: !completed && available,
-      score: progress?.score || null
+      gameScore: progress?.game_score || null,
+      accuracy: progress?.accuracy || null,
+      correctAnswers: progress?.correct_answers || null,
+      totalQuestions: progress?.total_questions || null
     });
     
     previousCompleted = completed;
@@ -330,23 +445,53 @@ function calculateNodePositions() {
   if (!mapContainer.value) return;
   
   const containerWidth = mapContainer.value.clientWidth || 800;
-  const padding = 60; // Padding interno para evitar overflow
-  const verticalSpacing = 150;
-  const horizontalAmplitude = Math.min(150, (containerWidth - padding * 2) / 4);
-  const centerX = containerWidth / 2 - 35; // 35 = half node size (70px / 2)
+  const padding = 80;
+  const verticalSpacing = 140; // Distancia para extremos
+  const centerSpacing = 110; // Distancia reducida para nodos del centro
+  const horizontalOffset = 200; // Desplazamiento izquierda/derecha
+  const centerX = containerWidth / 2 - 35;
+  
+  let currentY = 100;
   
   svgWidth.value = containerWidth;
-  svgHeight.value = lessonNodes.value.length * verticalSpacing + 200;
   
   lessonNodes.value.forEach((node, index) => {
-    // Crear patrón de zigzag más pronunciado
-    const yPos = 100 + index * verticalSpacing;
-    const xOffset = Math.sin(index * 0.8) * horizontalAmplitude;
+    // Posición X: patrón izquierda → centro → derecha → centro
+    const position = index % 4;
+    let xOffset = 0;
+    
+    if (position === 0) {
+      xOffset = -horizontalOffset; // Izquierda
+    } else if (position === 1) {
+      xOffset = 0; // Centro
+    } else if (position === 2) {
+      xOffset = horizontalOffset; // Derecha
+    } else {
+      xOffset = 0; // Centro
+    }
+    
     const xPos = Math.max(padding, Math.min(containerWidth - padding - 70, centerX + xOffset));
     
     node.x = xPos;
-    node.y = yPos;
+    node.y = currentY;
+    
+    // Incrementar Y según si el siguiente es centro o extremo
+    // Si estamos en extremo (0 o 2) y el siguiente es centro (1 o 3), usar espacio reducido
+    // Si estamos en centro y el siguiente es extremo, usar espacio reducido
+    // Si estamos en centro y el siguiente es centro (3→0), usar espacio normal
+    const nextPosition = (index + 1) % 4;
+    const isToCenter = (position === 0 || position === 2) && (nextPosition === 1 || nextPosition === 3);
+    const isFromCenter = (position === 1 || position === 3) && (nextPosition === 0 || nextPosition === 2);
+    
+    if (isToCenter || isFromCenter) {
+      currentY += centerSpacing; // Espacio reducido hacia/desde centro
+    } else {
+      currentY += verticalSpacing; // Espacio normal
+    }
   });
+  
+  // Calcular altura total del SVG basado en la última posición Y
+  svgHeight.value = currentY + 100;
 }
 
 function scrollToCurrentNode() {
@@ -377,6 +522,20 @@ function getLessonTypeLabel(contentType: string): string {
     'mixto': 'Mixto'
   };
   return labels[contentType] || contentType;
+}
+
+/**
+ * Calcula cuántas estrellas mostrar según el accuracy
+ * 75-84%: ⭐ (1 estrella)
+ * 85-99%: ⭐⭐ (2 estrellas)
+ * 100%: ⭐⭐⭐ (3 estrellas)
+ */
+function getStarsForAccuracy(accuracy: number | null): string {
+  if (!accuracy) return '⭐';
+  
+  if (accuracy >= 100) return '⭐⭐⭐';
+  if (accuracy >= 85) return '⭐⭐';
+  return '⭐';
 }
 
 function handleNodeClick(node: LessonNode) {
@@ -456,7 +615,7 @@ onUnmounted(() => {
 <style scoped>
 .game-map {
   min-height: 100vh;
-  background: linear-gradient(180deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  background: linear-gradient(180deg, #8BC34A 0%, #29B6F6 50%, #FF5598 100%);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -469,7 +628,7 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #8BC34A 0%, #29B6F6 50%, #FF5598 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -480,63 +639,23 @@ onUnmounted(() => {
 .loading-content {
   text-align: center;
   color: white;
-}
-
-.loading-spinner {
-  position: relative;
-  width: 120px;
-  height: 120px;
-  margin: 0 auto 2rem;
-}
-
-.spinner-ring {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border: 4px solid transparent;
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
-}
-
-.spinner-ring:nth-child(2) {
-  width: 80%;
-  height: 80%;
-  top: 10%;
-  left: 10%;
-  border-top-color: #FFD700;
-  animation-delay: -0.3s;
-}
-
-.spinner-ring:nth-child(3) {
-  width: 60%;
-  height: 60%;
-  top: 20%;
-  left: 20%;
-  border-top-color: #2ecc71;
-  animation-delay: -0.6s;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
 }
 
 .loading-title {
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: 800;
-  margin: 0 0 0.5rem 0;
+  margin: 0;
   text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   animation: pulse 2s ease-in-out infinite;
 }
 
 .loading-text {
   font-size: 1.2rem;
-  margin: 0 0 1.5rem 0;
+  margin: 0;
   opacity: 0.9;
   font-weight: 500;
 }
@@ -545,6 +664,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 .loading-dots span {
@@ -553,6 +673,7 @@ onUnmounted(() => {
   background: white;
   border-radius: 50%;
   animation: dotBounce 1.4s infinite ease-in-out both;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .loading-dots span:nth-child(1) {
@@ -608,8 +729,8 @@ onUnmounted(() => {
 
 .btn-back {
   background: transparent;
-  border: 2px solid #3498db;
-  color: #3498db;
+  border: 2px solid #29B6F6;
+  color: #29B6F6;
   padding: 0.6rem 1.2rem;
   border-radius: 10px;
   cursor: pointer;
@@ -622,10 +743,10 @@ onUnmounted(() => {
 }
 
 .btn-back:hover {
-  background: #3498db;
+  background: #29B6F6;
   color: white;
   transform: translateX(-5px);
-  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+  box-shadow: 0 4px 15px rgba(41, 182, 246, 0.4);
 }
 
 .btn-fullscreen {
@@ -634,7 +755,7 @@ onUnmounted(() => {
   right: 2rem;
   width: 45px;
   height: 45px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #FF5598 0%, #F50057 100%);
   border: none;
   border-radius: 50%;
   color: white;
@@ -644,13 +765,13 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   font-size: 1.2rem;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 15px rgba(255, 85, 152, 0.4);
   z-index: 1000;
 }
 
 .btn-fullscreen:hover {
   transform: scale(1.1);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+  box-shadow: 0 6px 20px rgba(255, 85, 152, 0.6);
 }
 
 .btn-fullscreen:active {
@@ -689,7 +810,7 @@ onUnmounted(() => {
 
 .progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, #3498db 0%, #2ecc71 100%);
+  background: linear-gradient(90deg, #8BC34A 0%, #29B6F6 100%);
   transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 10px;
   display: flex;
@@ -724,7 +845,16 @@ onUnmounted(() => {
   z-index: 1;
 }
 
-.progress-text {
+.stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.progress-text,
+.score-text {
   font-weight: 700;
   color: #2c3e50;
   font-size: 1.1rem;
@@ -734,8 +864,18 @@ onUnmounted(() => {
 }
 
 .icon-star {
-  color: #f39c12;
+  color: #FFA726;
   animation: star-twinkle 2s ease-in-out infinite;
+}
+
+.icon-trophy {
+  color: #FFA726;
+  animation: trophy-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes trophy-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
 }
 
 @keyframes shimmer {
@@ -754,6 +894,8 @@ onUnmounted(() => {
   overflow-x: hidden;
   scroll-behavior: smooth;
   position: relative;
+  transform: translateZ(0);
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Custom scrollbar */
@@ -768,13 +910,13 @@ onUnmounted(() => {
 }
 
 .map-scroll-container::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #3498db, #2ecc71);
+  background: linear-gradient(180deg, #8BC34A, #29B6F6);
   border-radius: 10px;
   border: 2px solid rgba(255, 255, 255, 0.1);
 }
 
 .map-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #2980b9, #27ae60);
+  background: linear-gradient(180deg, #689F38, #0288D1);
 }
 
 .map-container {
@@ -783,6 +925,8 @@ onUnmounted(() => {
   margin: 0 auto;
   padding: 2rem 1rem;
   min-height: 600px;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .path-svg {
@@ -792,6 +936,7 @@ onUnmounted(() => {
   pointer-events: none;
   z-index: 1;
   width: 100%;
+  will-change: transform;
 }
 
 .lesson-path-shadow {
@@ -808,7 +953,7 @@ onUnmounted(() => {
 
 .progress-path {
   opacity: 1;
-  filter: drop-shadow(0 0 12px rgba(52, 152, 219, 0.8)) url(#glow);
+  filter: drop-shadow(0 0 12px rgba(139, 195, 74, 0.8)) url(#glow);
   stroke-width: 14;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -816,8 +961,8 @@ onUnmounted(() => {
 }
 
 @keyframes path-glow {
-  0%, 100% { filter: drop-shadow(0 0 12px rgba(52, 152, 219, 0.8)); }
-  50% { filter: drop-shadow(0 0 20px rgba(46, 204, 113, 1)); }
+  0%, 100% { filter: drop-shadow(0 0 12px rgba(139, 195, 74, 0.8)); }
+  50% { filter: drop-shadow(0 0 20px rgba(255, 85, 152, 1)); }
 }
 
 .lesson-node {
@@ -835,8 +980,8 @@ onUnmounted(() => {
 
 .lesson-node.locked {
   cursor: not-allowed;
-  opacity: 0.5;
-  filter: grayscale(60%);
+  opacity: 1;
+  filter: grayscale(0);
 }
 
 .lesson-node.locked:hover {
@@ -850,7 +995,7 @@ onUnmounted(() => {
   height: 110px;
   top: -25px;
   left: -25px;
-  background: radial-gradient(circle, rgba(46, 204, 113, 0.5) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(139, 195, 74, 0.5) 0%, transparent 70%);
   border-radius: 50%;
   animation: halo-pulse 2.5s ease-in-out infinite;
   z-index: -1;
@@ -880,10 +1025,24 @@ onUnmounted(() => {
   border: 5px solid white;
   transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   position: relative;
-  overflow: hidden;
+  overflow: visible; /* Permitir que las estrellas sobresalgan del círculo */
 }
 
-.node-circle::before {
+/* Capa interna con overflow hidden para contener el efecto de brillo */
+.node-circle-inner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden; /* Contiene el brillo dentro */
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Efecto de brillo dentro de la capa interna */
+.node-circle-inner::before {
   content: '';
   position: absolute;
   top: 0;
@@ -894,26 +1053,26 @@ onUnmounted(() => {
   transition: left 0.5s;
 }
 
-.lesson-node:hover .node-circle::before {
+.lesson-node:hover .node-circle-inner::before {
   left: 100%;
 }
 
 .lesson-node.completed .node-circle {
-  background: linear-gradient(135deg, #f39c12, #e67e22);
+  background: linear-gradient(135deg, #FFA726, #F57C00);
   animation: completed-pulse 3s infinite;
-  box-shadow: 0 6px 25px rgba(243, 156, 18, 0.6);
+  box-shadow: 0 6px 25px rgba(255, 167, 38, 0.6);
 }
 
 .lesson-node.available .node-circle {
-  background: linear-gradient(135deg, #3498db, #2980b9);
-  box-shadow: 0 6px 20px rgba(52, 152, 219, 0.5);
+  background: linear-gradient(135deg, #29B6F6, #0288D1);
+  box-shadow: 0 6px 20px rgba(41, 182, 246, 0.5);
 }
 
 .lesson-node.current .node-circle {
-  background: linear-gradient(135deg, #2ecc71, #27ae60);
+  background: linear-gradient(135deg, #8BC34A, #689F38);
   animation: current-bounce 1.2s ease-in-out infinite, current-glow 2s ease-in-out infinite;
-  box-shadow: 0 8px 30px rgba(46, 204, 113, 0.8);
-  border-color: #FFD700;
+  box-shadow: 0 8px 30px rgba(139, 195, 74, 0.8);
+  border-color: #FF5598;
   border-width: 6px;
 }
 
@@ -924,11 +1083,11 @@ onUnmounted(() => {
 
 @keyframes completed-pulse {
   0%, 100% {
-    box-shadow: 0 6px 25px rgba(243, 156, 18, 0.6);
+    box-shadow: 0 6px 25px rgba(255, 167, 38, 0.6);
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 8px 35px rgba(243, 156, 18, 0.9);
+    box-shadow: 0 8px 35px rgba(255, 167, 38, 0.9);
     transform: scale(1.05);
   }
 }
@@ -944,15 +1103,51 @@ onUnmounted(() => {
 
 @keyframes current-glow {
   0%, 100% {
-    box-shadow: 0 8px 30px rgba(46, 204, 113, 0.8);
+    box-shadow: 0 8px 30px rgba(139, 195, 74, 0.8);
   }
   50% {
-    box-shadow: 0 12px 45px rgba(255, 215, 0, 1);
+    box-shadow: 0 12px 45px rgba(255, 85, 152, 1);
   }
 }
 
 .node-icon {
-  font-size: 2rem;
+  font-size: 2.2rem; /* Más grande para que sobresalgan visualmente */
+  line-height: 1;
+  letter-spacing: -3px; /* Juntar más las estrellas múltiples */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2; /* Asegurar que estén por encima del círculo */
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)); /* Sombra para destacar */
+  transform: scale(1.1); /* Escalar un poco más para que sobresalgan */
+  animation: stars-float 3s ease-in-out infinite, stars-twinkle 1.5s ease-in-out infinite;
+}
+
+@keyframes stars-float {
+  0%, 100% {
+    transform: scale(1.1) translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.15) translateY(-3px) rotate(-5deg);
+  }
+  50% {
+    transform: scale(1.1) translateY(0) rotate(0deg);
+  }
+  75% {
+    transform: scale(1.15) translateY(-3px) rotate(5deg);
+  }
+}
+
+@keyframes stars-twinkle {
+  0%, 100% {
+    opacity: 1;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) brightness(1);
+  }
+  50% {
+    opacity: 0.7;
+    filter: drop-shadow(0 2px 8px rgba(255, 215, 0, 0.8)) brightness(1.4);
+  }
 }
 
 .node-number {
@@ -983,7 +1178,7 @@ onUnmounted(() => {
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
   min-width: 220px;
   text-align: center;
-  border: 3px solid rgba(52, 152, 219, 0.2);
+  border: 3px solid rgba(139, 195, 74, 0.3);
   backdrop-filter: blur(10px);
 }
 
@@ -1023,22 +1218,50 @@ onUnmounted(() => {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
-.score-display {
+/* Estadísticas de rendimiento */
+.performance-stats {
   margin: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stat-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.stat-row.primary .stat-item {
+  background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
+  border: 2px solid #FFA726;
+}
+
+.stat-row.secondary .stat-item {
+  background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
+  border: 2px solid #8BC34A;
+}
+
+.stat-item {
+  flex: 1;
   padding: 0.75rem;
-  background: linear-gradient(135deg, #fff9e6, #fff3cc);
   border-radius: 12px;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 0.5rem;
-  border: 2px solid #f39c12;
 }
 
-.trophy-icon {
-  color: #f39c12;
-  font-size: 1.3rem;
+.stat-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.stat-row.primary .stat-icon {
+  color: #FFA726;
   animation: trophy-bounce 1s ease-in-out infinite;
+}
+
+.stat-row.secondary .stat-icon {
+  color: #8BC34A;
 }
 
 @keyframes trophy-bounce {
@@ -1046,15 +1269,89 @@ onUnmounted(() => {
   50% { transform: translateY(-4px); }
 }
 
-.score-value {
-  color: #f39c12;
+.stat-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: #666;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 1.1rem;
   font-weight: 800;
-  font-size: 1.3rem;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
+.stat-row.primary .stat-value {
+  color: #FFA726;
+}
+
+.stat-row.secondary .stat-value {
+  color: #8BC34A;
+}
+
+/* Fila de estrellas */
+.stat-row.stars .stat-item {
+  background: linear-gradient(135deg, #FFF9C4, #FFF59D);
+  border: 2px solid #FFA726;
+  padding: 0.6rem;
+  justify-content: center;
+}
+
+.star-rating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+}
+
+.stars-display {
+  font-size: 1.5rem;
+  letter-spacing: 2px;
+  animation: stars-shine 2s ease-in-out infinite, stars-twinkle-card 1.5s ease-in-out infinite;
+}
+
+@keyframes stars-shine {
+  0%, 100% { 
+    filter: brightness(1);
+    transform: scale(1);
+  }
+  50% { 
+    filter: brightness(1.3);
+    transform: scale(1.05);
+  }
+}
+
+@keyframes stars-twinkle-card {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  }
+  50% {
+    opacity: 0.75;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 1), 0 0 30px rgba(255, 215, 0, 0.8);
+  }
+}
+
+.accuracy-text {
+  font-size: 0.75rem;
+  color: #F57C00;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .btn-play {
-  background: linear-gradient(135deg, #3498db, #2980b9);
+  background: linear-gradient(135deg, #FF5598, #F50057);
   color: white;
   border: none;
   padding: 0.85rem 1.75rem;
@@ -1063,7 +1360,7 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   margin-top: 0.75rem;
-  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+  box-shadow: 0 4px 15px rgba(255, 85, 152, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1074,7 +1371,7 @@ onUnmounted(() => {
 
 .btn-play:hover {
   transform: translateY(-3px) scale(1.05);
-  box-shadow: 0 8px 25px rgba(52, 152, 219, 0.6);
+  box-shadow: 0 8px 25px rgba(255, 85, 152, 0.6);
 }
 
 .btn-play:active {
@@ -1082,12 +1379,12 @@ onUnmounted(() => {
 }
 
 .btn-play.completed {
-  background: linear-gradient(135deg, #f39c12, #e67e22);
-  box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4);
+  background: linear-gradient(135deg, #FFA726, #F57C00);
+  box-shadow: 0 4px 15px rgba(255, 167, 38, 0.4);
 }
 
 .btn-play.completed:hover {
-  box-shadow: 0 8px 25px rgba(243, 156, 18, 0.6);
+  box-shadow: 0 8px 25px rgba(255, 167, 38, 0.6);
 }
 
 .locked-message {

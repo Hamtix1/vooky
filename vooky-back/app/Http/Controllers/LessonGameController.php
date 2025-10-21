@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Lesson;
 use App\Models\Image;
 use App\Models\Level;
+use App\Models\Badge;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -217,39 +218,158 @@ class LessonGameController extends Controller
         $request->validate([
             'correct_answers' => 'required|integer|min:0|max:20',
             'total_questions' => 'required|integer|min:1|max:20',
+            'game_score' => 'nullable|integer|min:0', // Score del juego con combos (sin límite superior)
         ]);
 
         $user = $request->user();
         $lesson = Lesson::findOrFail($lessonId);
         
-        // Calcular puntuación (0-100)
-        $score = ($request->correct_answers / $request->total_questions) * 100;
+        // Calcular accuracy actual (0-100) - porcentaje de aciertos
+        $newAccuracy = ($request->correct_answers / $request->total_questions) * 100;
+        $roundedNewAccuracy = round($newAccuracy);
         
-        // Determinar si aprobó (75% o más)
-        $passed = $score >= 75;
+        // Game score (puntuación con combos y bonos) - viene del frontend
+        $newGameScore = $request->input('game_score', $roundedNewAccuracy);
         
-        // Guardar o actualizar el registro en lesson_user
+        // Determinar si aprobó en este intento (75% o más de accuracy)
+        $passedNow = $newAccuracy >= 75;
+        
+        // Obtener el progreso previo (si existe)
+        $previousProgress = DB::table('lesson_user')
+            ->where('user_id', $user->id)
+            ->where('lesson_id', $lesson->id)
+            ->first();
+        
+        // Determinar los valores finales
+        $finalAccuracy = $roundedNewAccuracy;
+        $finalGameScore = $newGameScore;
+        $finalCorrectAnswers = $request->correct_answers;
+        $finalTotalQuestions = $request->total_questions;
+        $finalCompletedAt = null;
+        $wasAlreadyCompleted = false;
+        
+        if ($previousProgress) {
+            // Ya existe un registro previo
+            $wasAlreadyCompleted = !is_null($previousProgress->completed_at);
+            
+            // Mantener la accuracy más alta
+            if ($previousProgress->accuracy && $previousProgress->accuracy > $roundedNewAccuracy) {
+                $finalAccuracy = $previousProgress->accuracy;
+                $finalCorrectAnswers = $previousProgress->correct_answers;
+                $finalTotalQuestions = $previousProgress->total_questions;
+            }
+            
+            // Mantener el game_score más alto
+            if ($previousProgress->game_score && $previousProgress->game_score > $newGameScore) {
+                $finalGameScore = $previousProgress->game_score;
+            }
+            
+            // Mantener completed_at si ya estaba aprobada, o actualizar si aprueba ahora
+            if ($wasAlreadyCompleted) {
+                // Ya estaba aprobada, mantener la fecha original
+                $finalCompletedAt = $previousProgress->completed_at;
+            } elseif ($passedNow) {
+                // Primera vez que aprueba
+                $finalCompletedAt = now();
+            }
+        } else {
+            // Primer intento
+            if ($passedNow) {
+                $finalCompletedAt = now();
+            }
+        }
+        
+        // Actualizar o crear el registro
         DB::table('lesson_user')->updateOrInsert(
             [
                 'user_id' => $user->id,
                 'lesson_id' => $lesson->id
             ],
             [
-                'score' => round($score),
-                'correct_answers' => $request->correct_answers,
-                'total_questions' => $request->total_questions,
-                'completed_at' => $passed ? now() : null, // Solo marcar completada si aprobó
+                'accuracy' => $finalAccuracy,
+                'game_score' => $finalGameScore,
+                'correct_answers' => $finalCorrectAnswers,
+                'total_questions' => $finalTotalQuestions,
+                'completed_at' => $finalCompletedAt,
                 'updated_at' => now(),
             ]
         );
+        
+        // Determinar el estado final (aprobada si tiene completed_at)
+        $finalPassed = !is_null($finalCompletedAt);
+        
+        // Mensajes descriptivos
+        $message = '';
+        if ($passedNow && !$wasAlreadyCompleted) {
+            $message = '¡Lección aprobada por primera vez!';
+        } elseif ($passedNow && $wasAlreadyCompleted && $roundedNewAccuracy > $previousProgress->accuracy) {
+            $message = '¡Nueva mejor puntuación! Lección ya aprobada anteriormente.';
+        } elseif ($passedNow && $wasAlreadyCompleted && $roundedNewAccuracy <= $previousProgress->accuracy) {
+            $message = 'Lección ya aprobada. Puntuación anterior es mejor.';
+        } elseif (!$passedNow && $wasAlreadyCompleted) {
+            $message = 'Lección sigue aprobada. Este intento no superó el 75%.';
+        } else {
+            $message = 'Lección no aprobada - Necesitas 75% o más.';
+        }
+
+        // Verificar y otorgar insignias si completó la lección por primera vez
+        $newBadges = [];
+        if ($passedNow && !$wasAlreadyCompleted) {
+            $newBadges = $this->checkAndAwardBadges($user->id, $lesson->level->course_id);
+        }
 
         return response()->json([
-            'message' => $passed ? 'Lección aprobada exitosamente' : 'Lección no aprobada - Necesitas 75% o más',
-            'score' => round($score),
-            'correct_answers' => $request->correct_answers,
-            'total_questions' => $request->total_questions,
-            'passed' => $passed,
+            'message' => $message,
+            'accuracy' => $finalAccuracy, // Mejor accuracy (porcentaje de aciertos)
+            'game_score' => $finalGameScore, // Mejor game score (con combos)
+            'current_attempt_accuracy' => $roundedNewAccuracy, // Accuracy de este intento
+            'current_attempt_score' => $newGameScore, // Game score de este intento
+            'correct_answers' => $finalCorrectAnswers,
+            'total_questions' => $finalTotalQuestions,
+            'passed' => $finalPassed,
+            'improved' => $previousProgress && $roundedNewAccuracy > $previousProgress->accuracy,
+            'was_already_completed' => $wasAlreadyCompleted,
+            'new_badges' => $newBadges, // Nuevas insignias obtenidas
         ]);
+    }
+
+    /**
+     * Verificar y otorgar insignias a un usuario basado en lecciones completadas
+     */
+    private function checkAndAwardBadges($userId, $courseId)
+    {
+        // Contar lecciones completadas del usuario en este curso
+        $completedLessonsCount = DB::table('lesson_user')
+            ->join('lessons', 'lessons.id', '=', 'lesson_user.lesson_id')
+            ->join('levels', 'levels.id', '=', 'lessons.level_id')
+            ->where('lesson_user.user_id', $userId)
+            ->where('levels.course_id', $courseId)
+            ->whereNotNull('lesson_user.completed_at')
+            ->count();
+
+        // Obtener insignias del curso que el usuario aún no tiene y ha alcanzado
+        $availableBadges = Badge::where('course_id', $courseId)
+            ->where('lessons_required', '<=', $completedLessonsCount)
+            ->whereDoesntHave('users', function ($query) use ($userId) {
+                $query->where('user_id', $userId);
+            })
+            ->get();
+
+        $newBadges = [];
+
+        // Otorgar cada insignia disponible
+        foreach ($availableBadges as $badge) {
+            $badge->users()->attach($userId, ['earned_at' => now()]);
+            $newBadges[] = [
+                'id' => $badge->id,
+                'name' => $badge->name,
+                'description' => $badge->description,
+                'image' => $badge->image,
+                'lessons_required' => $badge->lessons_required,
+            ];
+        }
+
+        return $newBadges;
     }
 
     /**
@@ -268,7 +388,8 @@ class LessonGameController extends Controller
             if (!$progress) {
                 return response()->json([
                     'completed' => false,
-                    'score' => null,
+                    'accuracy' => null,
+                    'game_score' => null,
                     'correct_answers' => null,
                     'total_questions' => null,
                     'completed_at' => null,
@@ -277,7 +398,8 @@ class LessonGameController extends Controller
 
             return response()->json([
                 'completed' => !is_null($progress->completed_at),
-                'score' => $progress->score ?? null,
+                'accuracy' => $progress->accuracy ?? null,
+                'game_score' => $progress->game_score ?? null,
                 'correct_answers' => $progress->correct_answers ?? null,
                 'total_questions' => $progress->total_questions ?? null,
                 'completed_at' => $progress->completed_at,

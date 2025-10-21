@@ -71,4 +71,10 @@ class Course extends Model
     {
         return $this->hasMany(Category::class);
     }
+
+    // Insignias del curso
+    public function badges()
+    {
+        return $this->hasMany(Badge::class)->orderBy('order');
+    }
 }

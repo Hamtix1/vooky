@@ -30,16 +30,29 @@ export interface LessonGameData {
 }
 
 export interface GameResult {
-  score: number;
+  accuracy: number; // Porcentaje de aciertos (0-100)
+  game_score: number; // Puntuación del juego con combos (sin límite, puede ser miles)
+  current_attempt_accuracy: number; // Accuracy del intento actual
+  current_attempt_score: number; // Game score del intento actual
   correct_answers: number;
   total_questions: number;
   passed: boolean;
-  message?: string;
+  improved: boolean;
+  was_already_completed: boolean;
+  message: string;
+  new_badges?: Array<{
+    id: number;
+    name: string;
+    description: string;
+    image?: string;
+    lessons_required: number;
+  }>;
 }
 
 export interface LessonProgress {
   completed: boolean;
-  score: number | null;
+  accuracy: number | null; // Mejor porcentaje de aciertos (0-100)
+  game_score: number | null; // Mejor puntuación del juego (sin límite)
   correct_answers: number | null;
   total_questions: number | null;
   completed_at: string | null;
@@ -53,11 +66,13 @@ export async function getLessonQuestions(lessonId: number): Promise<LessonGameDa
 export async function saveLessonResult(
   lessonId: number,
   correctAnswers: number,
-  totalQuestions: number
+  totalQuestions: number,
+  gameScore?: number // Score del juego con combos (opcional)
 ): Promise<GameResult> {
   const response = await api.post(`/lessons/${lessonId}/result`, {
     correct_answers: correctAnswers,
     total_questions: totalQuestions,
+    game_score: gameScore,
   });
   return response.data;
 }

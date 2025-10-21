@@ -86,6 +86,24 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('@/pages/dashboard/CategoryManager.vue'),
     meta: { requiresAuth: true, roles: ['admin'] },
   },
+  {
+    path: '/dashboard/badges',
+    name: 'BadgeManagement',
+    component: () => import('@/pages/BadgeManagement.vue'),
+    meta: { requiresAuth: true, roles: ['admin'] },
+  },
+  {
+    path: '/profile',
+    name: 'UserProfile',
+    component: () => import('@/pages/UserProfile.vue'),
+    meta: { requiresAuth: true, roles: ['admin', 'parent'] },
+  },
+  {
+    path: '/ranking',
+    name: 'Ranking',
+    component: () => import('@/pages/Ranking.vue'),
+    meta: { requiresAuth: true, roles: ['admin', 'parent'] },
+  },
 ]
 
 const router = createRouter({

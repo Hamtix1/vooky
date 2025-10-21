@@ -43,7 +43,7 @@
         </div>
       </div>
       <div class="hero-wave">
-        <svg viewBox="0 0 1200 120" preserveAspectRatio="none">
+        <svg viewBox="0 0 1200 120" preserveAspectRatio="none" transform="scale(1, -1)">
           <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" fill="white"></path>
         </svg>
       </div>
@@ -66,10 +66,26 @@
     <!-- Stats Section -->
     <section class="stats">
       <div class="container">
-        <div class="stats-grid">
-          <div class="stat-item" v-for="(stat, index) in stats" :key="index">
-            <div class="stat-number">{{ stat.number }}</div>
-            <div class="stat-label">{{ stat.label }}</div>
+        <div v-if="loadingStats" class="stats-loading">
+          <div class="spinner"></div>
+          <p>Cargando estadísticas...</p>
+        </div>
+        <div v-else class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-number">{{ stats.active_users }}+</div>
+            <div class="stat-label">Estudiantes Activos</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number">{{ stats.available_courses }}+</div>
+            <div class="stat-label">Cursos Disponibles</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number">{{ stats.satisfaction_rate }}%</div>
+            <div class="stat-label">Tasa de Participación</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number">{{ formatNumber(stats.completed_lessons) }}+</div>
+            <div class="stat-label">Lecciones Completadas</div>
           </div>
         </div>
       </div>
@@ -96,11 +112,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/store/auth';
+import { getPublicStats, type PublicStats } from '@/services/statsService';
 
 const auth = useAuthStore();
 const isAuthenticated = computed(() => auth.isAuthenticated);
+
+// Estados para estadísticas
+const loadingStats = ref(true);
+const stats = ref<PublicStats>({
+  active_users: 0,
+  available_courses: 0,
+  satisfaction_rate: 0,
+  completed_lessons: 0,
+});
 
 const features = [
   {
@@ -135,12 +161,26 @@ const features = [
   }
 ];
 
-const stats = [
-  { number: '1000+', label: 'Estudiantes Activos' },
-  { number: '50+', label: 'Cursos Disponibles' },
-  { number: '95%', label: 'Satisfacción' },
-  { number: '24/7', label: 'Acceso' }
-];
+// Formatear números grandes
+function formatNumber(num: number): string {
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'k';
+  }
+  return num.toString();
+}
+
+// Cargar estadísticas al montar el componente
+onMounted(async () => {
+  try {
+    const data = await getPublicStats();
+    stats.value = data;
+  } catch (error) {
+    console.error('Error al cargar estadísticas:', error);
+    // Mantener valores por defecto en caso de error
+  } finally {
+    loadingStats.value = false;
+  }
+});
 </script>
 
 <style scoped>
@@ -148,9 +188,9 @@ const stats = [
   min-height: 100vh;
 }
 
-/* Hero Section */
+/* Hero Section - Colores Vooky */
 .hero {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  background: linear-gradient(135deg, #8BC34A 0%, #29B6F6 50%, #FF5598 100%);
   padding: 4rem 2rem 8rem;
   position: relative;
   overflow: hidden;
@@ -195,12 +235,12 @@ const stats = [
 }
 
 .title-highlight {
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  background: linear-gradient(135deg, #FFA726 0%, #FFB74D 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   display: inline-block;
-  text-shadow: 0 4px 20px rgba(255, 215, 0, 0.5);
+  text-shadow: 0 4px 20px rgba(255, 167, 38, 0.5);
 }
 
 .hero-subtitle {
@@ -235,14 +275,14 @@ const stats = [
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-  color: #2c3e50;
-  box-shadow: 0 8px 25px rgba(255, 215, 0, 0.4);
+  background: linear-gradient(135deg, #FF5598 0%, #F50057 100%);
+  color: white;
+  box-shadow: 0 8px 25px rgba(255, 85, 152, 0.4);
 }
 
 .btn-primary:hover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 35px rgba(255, 215, 0, 0.5);
+  box-shadow: 0 12px 35px rgba(255, 85, 152, 0.5);
 }
 
 .btn-secondary {
@@ -355,8 +395,9 @@ const stats = [
 
 .feature-card:hover {
   transform: translateY(-10px);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
-  border-color: #667eea;
+  box-shadow: 0 15px 40px rgba(139, 195, 74, 0.2);
+  border-color: #8BC34A;
+  background: linear-gradient(135deg, #f8f9fa 0%, #E8F5E9 100%);
 }
 
 .feature-icon {
@@ -378,11 +419,37 @@ const stats = [
   margin: 0;
 }
 
-/* Stats Section */
+/* Stats Section - Colores Vooky */
 .stats {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #29B6F6 0%, #0288D1 100%);
   padding: 4rem 2rem;
   color: white;
+}
+
+.stats-loading {
+  text-align: center;
+  padding: 2rem;
+}
+
+.stats-loading .spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.stats-loading p {
+  color: white;
+  font-size: 1.1rem;
 }
 
 .stats-grid {
@@ -396,7 +463,7 @@ const stats = [
   font-size: 3.5rem;
   font-weight: 800;
   margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  background: linear-gradient(135deg, #FFA726 0%, #FFD54F 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -436,16 +503,16 @@ const stats = [
 }
 
 .btn-cta {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #8BC34A 0%, #689F38 100%);
   color: white;
-  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 10px 30px rgba(139, 195, 74, 0.4);
   font-size: 1.2rem;
   padding: 1.25rem 2.5rem;
 }
 
 .btn-cta:hover {
   transform: translateY(-3px);
-  box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
+  box-shadow: 0 15px 40px rgba(139, 195, 74, 0.5);
 }
 
 /* Responsive */

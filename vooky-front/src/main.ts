@@ -4,6 +4,9 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 
+// Importar estilos globales del tema
+import '@/assets/styles/theme.css'
+
 // --- INICIO: Configuración de Font Awesome ---
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
@@ -29,7 +32,17 @@ import {
   faChevronDown,
   faImage,
   faVolumeUp,
-  faCheck
+  faCheck,
+  faTrophy,
+  faSignOutAlt,
+  faArrowLeft,
+  faArrowRight,
+  faPlay,
+  faInfoCircle,
+  faRocket,
+  faStar,
+  faCheckCircle,
+  faRedo
 } from '@fortawesome/free-solid-svg-icons'
 
 // Añade los iconos que vayas a usar a la librería
@@ -55,7 +68,17 @@ library.add(
   faChevronDown,
   faImage,
   faVolumeUp,
-  faCheck
+  faCheck,
+  faTrophy,
+  faSignOutAlt,
+  faArrowLeft,
+  faArrowRight,
+  faPlay,
+  faInfoCircle,
+  faRocket,
+  faStar,
+  faCheckCircle,
+  faRedo
 )
 // --- FIN: Configuración de Font Awesome ---
 

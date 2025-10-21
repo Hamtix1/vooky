@@ -96,11 +96,29 @@
           {{ finishedByErrors ? '❌ Game Over' : (passedLesson ? '🎉 ¡Lección Aprobada!' : '😔 Lección No Aprobada') }}
         </h1>
         
+        <!-- Mensaje del backend -->
+        <div v-if="resultMessage" class="backend-message" :class="{ 
+          'success': isNewHighScore || (passedLesson && !wasAlreadyCompleted),
+          'info': wasAlreadyCompleted,
+          'warning': !passedLesson && !finishedByErrors
+        }">
+          <p>{{ resultMessage }}</p>
+        </div>
+        
+        <!-- Badge de nuevo récord -->
+        <div v-if="isNewHighScore && !finishedByErrors" class="new-high-score-badge">
+          <div class="trophy-icon">🏆</div>
+          <p class="trophy-text">¡NUEVO RÉCORD!</p>
+          <p class="trophy-subtitle">Anterior: {{ bestScore }} pts → Ahora: {{ finalScore }} pts</p>
+        </div>
+        
         <!-- Mensaje especial si terminó por errores -->
         <div v-if="finishedByErrors" class="game-over-message">
           <div class="game-over-icon">💔</div>
           <p class="game-over-text">5 errores consecutivos</p>
-          <p class="game-over-subtitle">No te desanimes, ¡puedes intentarlo de nuevo!</p>
+          <p class="game-over-subtitle">
+            {{ wasAlreadyCompleted ? '¡Pero tu lección sigue aprobada!' : 'No te desanimes, ¡puedes intentarlo de nuevo!' }}
+          </p>
         </div>
         
         <!-- Mensaje si no aprobó (menos del 75%) -->
@@ -114,11 +132,15 @@
         <div v-else class="passed-badge">
           <div class="badge-icon">✨</div>
           <p class="badge-text">{{ accuracyPercentage }}% de aciertos</p>
+          <p v-if="wasAlreadyCompleted && !isNewHighScore" class="badge-subtitle">
+            Mejor puntuación: {{ bestScore }} pts
+          </p>
         </div>
         
         <div class="score-circle" :class="scoreClass">
-          <div class="score-value">{{ finalScore }}</div>
-          <div class="score-label">puntos</div>
+          <div class="score-value">{{ finalScore.toLocaleString() }}</div>
+          <div class="score-label">PUNTOS</div>
+          <div class="score-sublabel">Intento actual: {{ accuracyPercentage }}%</div>
         </div>
 
         <div class="results-stats">
@@ -137,18 +159,31 @@
               <div class="stat-label">Incorrectas</div>
             </div>
           </div>
+          
+          <!-- Mostrar mejor puntuación si es diferente -->
+          <div v-if="bestScore > finalScore && !finishedByErrors" class="stat-item best-score">
+            <div class="stat-icon trophy">🏆</div>
+            <div class="stat-info">
+              <div class="stat-value">{{ bestScore.toLocaleString() }} pts</div>
+              <div class="stat-label">Tu Récord</div>
+            </div>
+          </div>
         </div>
 
-        <div class="results-message" v-if="passedLesson">
+        <div class="results-message" v-if="passedLesson && !wasAlreadyCompleted">
           <p v-if="accuracyPercentage >= 90">🎉 ¡Excelente trabajo!</p>
           <p v-else-if="accuracyPercentage >= 80">👍 ¡Buen trabajo!</p>
           <p v-else>✅ ¡Aprobaste!</p>
         </div>
+        
+        <div class="results-message" v-else-if="passedLesson && wasAlreadyCompleted && isNewHighScore">
+          <p>🌟 ¡Mejoraste tu puntuación!</p>
+        </div>
 
-        <div class="results-actions" :class="{ 'dual-actions': !passedLesson }">
-          <button v-if="!passedLesson" @click="restartLesson" class="btn-retry">
+        <div class="results-actions" :class="{ 'dual-actions': !passedLesson || wasAlreadyCompleted }">
+          <button v-if="!passedLesson || wasAlreadyCompleted" @click="restartLesson" class="btn-retry">
             <span class="btn-icon">🔄</span>
-            Reintentar Lección
+            {{ wasAlreadyCompleted ? 'Mejorar Puntuación' : 'Reintentar Lección' }}
           </button>
           <button @click="$emit('close')" class="btn-primary">
             {{ passedLesson ? 'Continuar' : 'Volver al Mapa' }}
@@ -168,6 +203,12 @@
         </div>
       </div>
     </div>
+
+    <!-- Badge Notification -->
+    <BadgeNotification 
+      v-model="showBadgeNotification"
+      :badge="earnedBadge"
+    />
   </div>
 </template>
 
@@ -184,6 +225,16 @@ import { useGameAudio } from '@/composables/game/useGameAudio';
 // Importar componentes HUD
 import ScoreDisplay from '@/components/game/v2/hud/ScoreDisplay.vue';
 import ComboCounter from '@/components/game/v2/hud/ComboCounter.vue';
+import BadgeNotification from '@/components/BadgeNotification.vue';
+
+// Interfaces
+interface Badge {
+  id: number;
+  name: string;
+  description: string;
+  image?: string;
+  lessons_required: number;
+}
 
 // Interfaz para elementos con soporte de pantalla completa
 interface FullscreenElement extends HTMLElement {
@@ -230,6 +281,7 @@ const {
   playQuestionAudio: playAudioWithHowler,
   playCorrectSound,
   playIncorrectSound,
+  playLastQuestionSound,
   startBackgroundMusic,
   stopBackgroundMusic,
   adjustBGMIntensity,
@@ -248,11 +300,20 @@ const showResult = ref(false);
 const isPlayingAudio = ref(false);
 const showExitConfirm = ref(false);
 const finalScore = ref(0);
+const currentAttemptScore = ref(0); // Puntuación del intento actual
+const bestScore = ref(0); // Mejor puntuación guardada
+const isNewHighScore = ref(false); // Si mejoró el score
+const wasAlreadyCompleted = ref(false); // Si ya estaba aprobada antes
+const resultMessage = ref(''); // Mensaje del backend
 const isFullscreen = ref(false);
 const gameContainer = ref<HTMLElement | null>(null);
 const lessonGameContainer = ref<HTMLElement | null>(null);
 const finishedByErrors = ref(false); // NUEVO: Para rastrear si terminó por errores
 const passedLesson = ref(false); // NUEVO: Para rastrear si aprobó con 75% o más
+
+// Badge notification state
+const showBadgeNotification = ref(false);
+const earnedBadge = ref<Badge | null>(null);
 
 // Refs para las opciones (para animaciones)
 const leftOptionRef = ref<HTMLElement | null>(null);
@@ -271,8 +332,8 @@ const accuracyPercentage = computed(() =>
   totalQuestions.value > 0 ? Math.round((correctAnswers.value / totalQuestions.value) * 100) : 0
 );
 const scoreClass = computed(() => {
-  if (finalScore.value >= 80) return 'excellent';
-  if (finalScore.value >= 60) return 'good';
+  if (accuracyPercentage.value >= 80) return 'excellent';
+  if (accuracyPercentage.value >= 60) return 'good';
   return 'needs-practice';
 });
 
@@ -422,8 +483,20 @@ function nextQuestion() {
     // Iniciar timer para la nueva pregunta
     startQuestionTimer();
     
-    // Auto-play next question audio
-    setTimeout(() => playQuestionAudio(), 300);
+    // Verificar si es la última pregunta
+    const isLastQuestion = currentQuestionIndex.value === totalQuestions.value - 1;
+    
+    if (isLastQuestion) {
+      // Reproducir sonido especial de última pregunta
+      setTimeout(() => {
+        playLastQuestionSound();
+        // Reproducir el audio de la pregunta después del sonido especial
+        setTimeout(() => playQuestionAudio(), 1500);
+      }, 300);
+    } else {
+      // Auto-play next question audio normalmente
+      setTimeout(() => playQuestionAudio(), 300);
+    }
   } else {
     finishGame();
   }
@@ -431,25 +504,46 @@ function nextQuestion() {
 
 async function finishGame() {
   // Calcular bonificaciones finales
-  const bonusResult = calculateFinalBonuses();
+  calculateFinalBonuses();
+  
+  // El game score es el puntaje real del sistema de combos (score.value incluye todos los puntos acumulados)
+  const gameScore = score.value;
   
   try {
     const result = await saveLessonResult(
       props.lessonId,
       correctAnswers.value,
-      totalQuestions.value
+      totalQuestions.value,
+      gameScore // Enviar el game score real con combos (puede ser miles de puntos)
     );
     
-    // Usar el valor 'passed' del backend
+    // Guardar toda la información del resultado
     passedLesson.value = result.passed;
-    finalScore.value = result.score + bonusResult.bonus;
+    bestScore.value = result.game_score; // Mejor game score
+    currentAttemptScore.value = result.current_attempt_accuracy; // Accuracy actual
+    isNewHighScore.value = result.improved;
+    wasAlreadyCompleted.value = result.was_already_completed;
+    resultMessage.value = result.message;
+    
+    // Mostrar el game score del intento actual
+    finalScore.value = gameScore;
     gameState.value = 'finished';
+    
+    // Verificar si hay nuevas insignias
+    if (result.new_badges && result.new_badges.length > 0) {
+      // Mostrar notificación de la primera insignia (o podríamos mostrarlas todas secuencialmente)
+      earnedBadge.value = result.new_badges[0];
+      showBadgeNotification.value = true;
+    }
   } catch (err) {
     console.error('Error saving result:', err);
     // Still show results even if save fails
     const accuracyCalc = (correctAnswers.value / totalQuestions.value) * 100;
     passedLesson.value = accuracyCalc >= 75;
+    currentAttemptScore.value = Math.round(accuracyCalc);
+    bestScore.value = Math.round(accuracyCalc);
     finalScore.value = Math.round(accuracyCalc);
+    resultMessage.value = 'Error al guardar, pero calculado localmente';
     gameState.value = 'finished';
   }
 }
@@ -479,21 +573,36 @@ async function finishGameDueToErrors() {
   finishedByErrors.value = true; // Marcar que terminó por errores
   passedLesson.value = false; // No puede aprobar si terminó por errores
   
-  // Calcular bonificaciones finales (aunque sean pocas)
-  const bonusResult = calculateFinalBonuses();
+  // Calcular bonificaciones finales (aunque sean pocas por los errores)
+  calculateFinalBonuses();
+  
+  // El game score es el puntaje real del sistema de combos
+  const gameScore = score.value;
   
   try {
     const result = await saveLessonResult(
       props.lessonId,
       correctAnswers.value,
-      totalQuestions.value
+      totalQuestions.value,
+      gameScore // Enviar el game score real con combos
     );
-    finalScore.value = result.score + bonusResult.bonus;
+    
+    // Guardar información del resultado
+    bestScore.value = result.game_score;
+    currentAttemptScore.value = result.current_attempt_accuracy;
+    wasAlreadyCompleted.value = result.was_already_completed;
+    resultMessage.value = result.message;
+    passedLesson.value = result.passed; // Usar el del backend (puede estar aprobada previamente)
+    
+    // Mostrar el game score del intento actual
+    finalScore.value = gameScore;
     gameState.value = 'finished';
   } catch (err) {
     console.error('Error saving result:', err);
     // Still show results even if save fails
-    finalScore.value = Math.round((correctAnswers.value / totalQuestions.value) * 100);
+    currentAttemptScore.value = Math.round((correctAnswers.value / totalQuestions.value) * 100);
+    finalScore.value = currentAttemptScore.value;
+    resultMessage.value = 'Error al guardar, pero calculado localmente';
     gameState.value = 'finished';
   }
 }
@@ -1059,9 +1168,97 @@ onUnmounted(() => {
   margin: 0;
 }
 
+.badge-subtitle {
+  font-size: 1rem;
+  color: #155724;
+  margin: 0.5rem 0 0 0;
+  opacity: 0.8;
+}
+
 @keyframes sparkle {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+/* Backend Message Styles */
+.backend-message {
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  animation: fadeIn 0.5s ease;
+  font-weight: 500;
+}
+
+.backend-message.success {
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  border: 2px solid #28a745;
+  color: #155724;
+}
+
+.backend-message.info {
+  background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+  border: 2px solid #17a2b8;
+  color: #0c5460;
+}
+
+.backend-message.warning {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffe5b4 100%);
+  border: 2px solid #ffc107;
+  color: #856404;
+}
+
+.backend-message p {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+/* New High Score Badge */
+.new-high-score-badge {
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 50%, #ffd700 100%);
+  border: 3px solid #f39c12;
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  text-align: center;
+  animation: pulse 1s ease infinite, glow 2s ease infinite;
+  box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
+}
+
+.trophy-icon {
+  font-size: 4rem;
+  margin-bottom: 0.5rem;
+  animation: rotate 2s ease infinite;
+}
+
+.trophy-text {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #d68910;
+  margin: 0.5rem 0;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.trophy-subtitle {
+  font-size: 1.1rem;
+  color: #856404;
+  margin: 0.5rem 0 0 0;
+  font-weight: 600;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3); }
+  50% { box-shadow: 0 10px 40px rgba(255, 215, 0, 0.6); }
+}
+
+@keyframes rotate {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
 }
 
 .score-circle {
@@ -1103,6 +1300,18 @@ onUnmounted(() => {
   color: #7f8c8d;
   text-transform: uppercase;
   letter-spacing: 1px;
+}
+
+.score-comparison {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: #7f8c8d;
+  font-style: italic;
+}
+
+.score-comparison small {
+  display: block;
+  margin-top: 0.3rem;
 }
 
 @keyframes scaleIn {
@@ -1149,6 +1358,32 @@ onUnmounted(() => {
 .stat-icon.incorrect {
   background: #fadbd8;
   color: #e74c3c;
+}
+
+.stat-icon.trophy {
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  color: #d68910;
+  font-size: 1.8rem;
+  animation: sparkle 1.5s ease infinite;
+}
+
+.stat-item.best-score {
+  background: linear-gradient(135deg, #fff4e6, #ffe8cc);
+  border: 2px solid #f39c12;
+  border-radius: 12px;
+  padding: 0.5rem 1rem;
+  animation: fadeInUp 0.5s ease;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .stat-value {

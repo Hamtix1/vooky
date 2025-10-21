@@ -56,4 +56,12 @@ class User extends Authenticatable
             ->withPivot('completed_at')
             ->withTimestamps();
     }
+
+    // Insignias obtenidas por el usuario
+    public function badges()
+    {
+        return $this->belongsToMany(Badge::class, 'badge_user')
+            ->withPivot('earned_at')
+            ->withTimestamps();
+    }
 }
