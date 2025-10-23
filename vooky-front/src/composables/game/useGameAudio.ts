@@ -24,7 +24,6 @@ export function useGameAudio() {
       isInitialized.value = true;
       // Desbloquear audio en navegadores
       Howler.autoUnlock = true;
-      console.log('🔊 Audio system initialized');
     }
   }
   
@@ -117,20 +116,15 @@ export function useGameAudio() {
     initializeAudio(); // Inicializar audio
     try {
       // Cada sonido de combo suena SOLO en su nivel específico
-      
       if (comboLevel === 5) {
         sounds.combo5.play();
-        console.log(`🔊 Playing COMBO-5 sound (combo level: ${comboLevel})`);
       } else if (comboLevel === 3) {
         sounds.combo3.play();
-        console.log(`🔊 Playing COMBO-3 sound (combo level: ${comboLevel})`);
       } else if (comboLevel === 2) {
         sounds.combo2.play();
-        console.log(`🔊 Playing COMBO-2 sound (combo level: ${comboLevel})`);
       } else {
         // comboLevel = 0, 1, 4, 6, 7, 8... → sonido básico
         sounds.correct.play();
-        console.log(`🔊 Playing CORRECT sound (combo level: ${comboLevel})`);
       }
     } catch (error) {
       console.warn('Error playing correct sound:', error);
@@ -144,7 +138,6 @@ export function useGameAudio() {
     initializeAudio(); // Inicializar audio
     try {
       sounds.incorrect.play();
-      console.log('🔊 Playing incorrect sound');
     } catch (error) {
       console.warn('Error playing incorrect sound:', error);
     }
@@ -179,7 +172,6 @@ export function useGameAudio() {
     initializeAudio();
     try {
       sounds.lastQuestion.play();
-      console.log('🔊 Playing last question sound');
     } catch (error) {
       console.warn('Error playing last question sound:', error);
     }

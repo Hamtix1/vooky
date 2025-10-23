@@ -10,7 +10,18 @@ class Course extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['title', 'description', 'slug'];
+    protected $fillable = [
+        'title', 
+        'description', 
+        'slug', 
+        'monthly_fee', 
+        'requires_payment'
+    ];
+
+    protected $casts = [
+        'monthly_fee' => 'decimal:2',
+        'requires_payment' => 'boolean',
+    ];
 
     /**
      * The "booted" method of the model.
@@ -76,5 +87,19 @@ class Course extends Model
     public function badges()
     {
         return $this->hasMany(Badge::class)->orderBy('order');
+    }
+
+    // Inscripciones del curso
+    public function enrollments()
+    {
+        return $this->hasMany(Enrollment::class);
+    }
+
+    /**
+     * Inscripciones activas
+     */
+    public function activeEnrollments()
+    {
+        return $this->enrollments()->where('status', 'active');
     }
 }

@@ -30,6 +30,8 @@ import {
   faLayerGroup,
   faSpinner,
   faChevronDown,
+  faChevronUp,
+  faCog,
   faImage,
   faVolumeUp,
   faCheck,
@@ -42,7 +44,17 @@ import {
   faRocket,
   faStar,
   faCheckCircle,
-  faRedo
+  faRedo,
+  faExclamationTriangle,
+  faCreditCard,
+  faBookOpen,
+  faClock,
+  faBan,
+  faInbox,
+  faCalendar,
+  faExclamationCircle,
+  faMoneyCheckAlt,
+  faChartLine
 } from '@fortawesome/free-solid-svg-icons'
 
 // Añade los iconos que vayas a usar a la librería
@@ -66,6 +78,8 @@ library.add(
   faLayerGroup,
   faSpinner,
   faChevronDown,
+  faChevronUp,
+  faCog,
   faImage,
   faVolumeUp,
   faCheck,
@@ -78,7 +92,17 @@ library.add(
   faRocket,
   faStar,
   faCheckCircle,
-  faRedo
+  faRedo,
+  faExclamationTriangle,
+  faCreditCard,
+  faBookOpen,
+  faClock,
+  faBan,
+  faInbox,
+  faCalendar,
+  faExclamationCircle,
+  faMoneyCheckAlt,
+  faChartLine
 )
 // --- FIN: Configuración de Font Awesome ---
 

@@ -12,7 +12,11 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        // Generar matrículas mensuales todos los días a la 1:00 AM
+        $schedule->command('tuition:generate')->dailyAt('01:00');
+
+        // Verificar pagos vencidos todos los días a las 2:00 AM
+        $schedule->command('tuition:check-overdue')->dailyAt('02:00');
     }
 
     /**

@@ -1,13 +1,24 @@
 <template>
   <nav class="navbar">
     <div class="navbar-container">
-      <div class="navbar-brand">
+            <div class="navbar-brand">
         <AppLogo size="medium" :clickable="true" :showText="true" />
       </div>
 
-      <ul class="navbar-links">
+      <!-- Botón hamburguesa para móviles -->
+      <button 
+        class="hamburger-btn" 
+        @click="toggleMobileMenu"
+        :class="{ 'active': showMobileMenu }"
+      >
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+      </button>
+
+      <ul class="navbar-links" :class="{ 'mobile-menu-open': showMobileMenu }">
         <li>
-          <router-link :to="{ name: 'Home' }" class="nav-link">
+          <router-link :to="{ name: 'Home' }" class="nav-link" @click="closeMobileMenu">
             <font-awesome-icon icon="home" class="link-icon" />
             <span>Inicio</span>
           </router-link>
@@ -15,41 +26,106 @@
 
         <template v-if="isAuthenticated">
           <li>
-            <router-link :to="{ name: 'Courses' }" class="nav-link">
+            <router-link :to="{ name: 'Courses' }" class="nav-link" @click="closeMobileMenu">
               <font-awesome-icon icon="book" class="link-icon" />
               <span>Cursos</span>
             </router-link>
           </li>
           
-          <li>
-            <router-link :to="{ name: 'Ranking' }" class="nav-link">
+          <li v-if="!isAdmin">
+            <router-link :to="{ name: 'Ranking' }" class="nav-link" @click="closeMobileMenu">
               <font-awesome-icon icon="trophy" class="link-icon" />
               <span>Ranking</span>
             </router-link>
           </li>
           
-          <li v-if="isAdmin">
-            <router-link :to="{ name: 'BadgeManagement' }" class="nav-link">
-              <font-awesome-icon icon="trophy" class="link-icon" />
-              <span>Insignias</span>
+          <li v-if="!isAdmin">
+            <router-link :to="{ name: 'MyCourses' }" class="nav-link" @click="closeMobileMenu">
+              <font-awesome-icon icon="book-open" class="link-icon" />
+              <span>Mis Cursos</span>
             </router-link>
           </li>
           
-          <li v-if="isAdmin">
-            <router-link :to="{ name: 'Users' }" class="nav-link">
+          <li v-if="!isAdmin">
+            <router-link :to="{ name: 'TuitionFees' }" class="nav-link" @click="closeMobileMenu">
+              <font-awesome-icon icon="credit-card" class="link-icon" />
+              <span>Matrículas</span>
+            </router-link>
+          </li>
+          
+          <!-- Menú desplegable de Usuarios para Administradores -->
+          <li v-if="isAdmin" class="dropdown"
+              @mouseenter="openDropdown('users')"
+              @mouseleave="closeDropdown('users')">
+            <div class="nav-link dropdown-trigger"
+                 @click="toggleDropdown('users')">
               <font-awesome-icon icon="users" class="link-icon" />
               <span>Usuarios</span>
-            </router-link>
+              <font-awesome-icon :icon="showUsersDropdown ? 'chevron-up' : 'chevron-down'" class="dropdown-icon" />
+            </div>
+            <ul class="dropdown-menu" v-show="showUsersDropdown">
+              <li>
+                <router-link :to="{ name: 'Users' }" class="dropdown-item" @click="closeMobileMenu">
+                  <font-awesome-icon icon="users" class="dropdown-item-icon" />
+                  <span>Lista de Usuarios</span>
+                </router-link>
+              </li>
+              <li>
+                <router-link :to="{ name: 'Ranking' }" class="dropdown-item" @click="closeMobileMenu">
+                  <font-awesome-icon icon="trophy" class="dropdown-item-icon" />
+                  <span>Ranking de Usuarios</span>
+                </router-link>
+              </li>
+            </ul>
+          </li>
+          
+          <!-- Menú desplegable de Gestión para Administradores -->
+          <li v-if="isAdmin" class="dropdown"
+              @mouseenter="openDropdown('management')"
+              @mouseleave="closeDropdown('management')">
+            <div class="nav-link dropdown-trigger"
+                 @click="toggleDropdown('management')">
+              <font-awesome-icon icon="cog" class="link-icon" />
+              <span>Gestión</span>
+              <font-awesome-icon :icon="showManagementDropdown ? 'chevron-up' : 'chevron-down'" class="dropdown-icon" />
+            </div>
+            <ul class="dropdown-menu" v-show="showManagementDropdown">
+              <li>
+                <router-link :to="{ name: 'AdminTuitionFees' }" class="dropdown-item" @click="closeMobileMenu">
+                  <font-awesome-icon icon="money-check-alt" class="dropdown-item-icon" />
+                  <span>Gestión de Pagos</span>
+                </router-link>
+              </li>
+              <li>
+                <router-link :to="{ name: 'BadgeManagement' }" class="dropdown-item" @click="closeMobileMenu">
+                  <font-awesome-icon icon="trophy" class="dropdown-item-icon" />
+                  <span>Insignias</span>
+                </router-link>
+              </li>
+              <li>
+                <router-link :to="{ name: 'CategoryManager' }" class="dropdown-item" @click="closeMobileMenu">
+                  <font-awesome-icon icon="layer-group" class="dropdown-item-icon" />
+                  <span>Categorías</span>
+                </router-link>
+              </li>
+            </ul>
           </li>
         </template>
 
         <li v-if="!isAuthenticated">
-          <router-link :to="{ name: 'Login' }" class="nav-link login-link">
+          <router-link :to="{ name: 'Login' }" class="nav-link login-link" @click="closeMobileMenu">
             <font-awesome-icon icon="sign-in-alt" class="link-icon" />
             <span>Iniciar Sesión</span>
           </router-link>
         </li>
       </ul>
+
+      <!-- Overlay para menú móvil -->
+      <div 
+        v-if="showMobileMenu" 
+        class="mobile-menu-overlay" 
+        @click="closeMobileMenu"
+      ></div>
 
       <div class="navbar-user" v-if="isAuthenticated">
         <div class="user-info" @click="goToProfile">
@@ -68,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
 import AppLogo from '@/components/common/AppLogo.vue'
@@ -76,6 +152,31 @@ import AppLogo from '@/components/common/AppLogo.vue'
 // Instanciar el store y el router
 const auth = useAuthStore()
 const router = useRouter()
+
+// Estado para los menús desplegables
+const showUsersDropdown = ref(false)
+const showManagementDropdown = ref(false)
+const showMobileMenu = ref(false)
+
+// Abrir/cerrar dropdowns por hover (escritorio) o clic (móvil)
+function openDropdown(type: 'users' | 'management') {
+  if (window.innerWidth > 768) {
+    if (type === 'users') showUsersDropdown.value = true
+    if (type === 'management') showManagementDropdown.value = true
+  }
+}
+function closeDropdown(type: 'users' | 'management') {
+  if (window.innerWidth > 768) {
+    if (type === 'users') showUsersDropdown.value = false
+    if (type === 'management') showManagementDropdown.value = false
+  }
+}
+function toggleDropdown(type: 'users' | 'management') {
+  if (window.innerWidth <= 768) {
+    if (type === 'users') showUsersDropdown.value = !showUsersDropdown.value
+    if (type === 'management') showManagementDropdown.value = !showManagementDropdown.value
+  }
+}
 
 // Crear propiedades computadas para mantener el template limpio
 // Estas propiedades son reactivas y se actualizarán automáticamente cuando el estado del store cambie.
@@ -95,6 +196,21 @@ const handleLogout = async () => {
 // Función para ir al perfil
 const goToProfile = () => {
   router.push({ name: 'UserProfile' })
+}
+
+// Función para toggle del menú móvil
+const toggleMobileMenu = () => {
+  showMobileMenu.value = !showMobileMenu.value
+  // Cerrar menús desplegables cuando se abre el menú móvil
+  if (showMobileMenu.value) {
+    showUsersDropdown.value = false
+    showManagementDropdown.value = false
+  }
+}
+
+// Función para cerrar el menú móvil
+const closeMobileMenu = () => {
+  showMobileMenu.value = false
 }
 </script>
 
@@ -228,6 +344,81 @@ const goToProfile = () => {
   box-shadow: 0 4px 15px rgba(255, 85, 152, 0.4);
 }
 
+/* Dropdown styles */
+.dropdown {
+  position: relative;
+}
+
+.dropdown-trigger {
+  cursor: pointer;
+  user-select: none;
+}
+
+.dropdown-icon {
+  font-size: 0.8rem;
+  margin-left: 0.25rem;
+  transition: transform 0.3s ease;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  list-style: none;
+  margin: 0.5rem 0 0 0;
+  padding: 0.5rem 0;
+  min-width: 220px;
+  z-index: 1000;
+  animation: slideDown 0.3s ease;
+  border: 2px solid rgba(139, 195, 74, 0.2);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-menu li {
+  margin: 0;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  color: #2c3e50;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.dropdown-item:hover {
+  background: linear-gradient(135deg, #8BC34A 0%, #29B6F6 100%);
+  color: white;
+}
+
+.dropdown-item.router-link-exact-active {
+  background: linear-gradient(135deg, #8BC34A 0%, #29B6F6 100%);
+  color: white;
+  font-weight: 700;
+}
+
+.dropdown-item-icon {
+  font-size: 1rem;
+  width: 20px;
+  text-align: center;
+}
+
 .navbar-user {
   display: flex;
   align-items: center;
@@ -302,22 +493,129 @@ const goToProfile = () => {
   font-size: 1rem;
 }
 
-/* Responsive */
+/* Hamburger Menu */
+.hamburger-btn {
+  display: none;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 1001;
+}
+
+.hamburger-line {
+  width: 100%;
+  height: 3px;
+  background: white;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+  transform-origin: center;
+}
+
+.hamburger-btn.active .hamburger-line:nth-child(1) {
+  transform: rotate(45deg) translate(6px, 6px);
+}
+
+.hamburger-btn.active .hamburger-line:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger-btn.active .hamburger-line:nth-child(3) {
+  transform: rotate(-45deg) translate(6px, -6px);
+}
+
+/* Mobile Menu Overlay */
+.mobile-menu-overlay {
+  display: none;
+}
+
 @media (max-width: 768px) {
+  .mobile-menu-overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+  }
+  .hamburger-btn {
+    display: flex;
+  }
+
   .navbar-container {
-    flex-wrap: wrap;
+    position: relative;
     padding: 0.75rem 1rem;
   }
 
   .navbar-links {
+    position: fixed;
+    top: 0;
+    left: -100%;
+    width: 280px;
+    height: 100vh;
+    background: linear-gradient(135deg, #8BC34A 0%, #29B6F6 100%);
     flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    padding: 5rem 1rem 2rem;
+    gap: 0.5rem;
+    transition: left 0.3s ease;
+    z-index: 1000;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+    overflow-y: auto;
+  }
+
+  .navbar-links.mobile-menu-open {
+    left: 0;
+  }
+
+  .navbar-links li {
     width: 100%;
-    order: 3;
-    gap: 0.25rem;
+    margin: 0;
+  }
+
+  .nav-link {
+    justify-content: flex-start;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 0.25rem;
+  }
+
+  .dropdown {
+    width: 100%;
+  }
+
+  .dropdown-menu {
+    position: static;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    box-shadow: none;
+    margin: 0.5rem 0;
+    border-radius: 8px;
+  }
+
+  .dropdown-item {
+    padding: 0.75rem 1.5rem;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
   }
 
   .navbar-user {
-    flex-wrap: wrap;
+    position: absolute;
+    top: 0.75rem;
+    right: 4rem;
+    flex-wrap: nowrap;
   }
 
   .user-name {

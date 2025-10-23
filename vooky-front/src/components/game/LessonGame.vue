@@ -361,8 +361,39 @@ async function loadLesson() {
       setTimeout(() => playQuestionAudio(), 500);
     }
   } catch (err: unknown) {
-    const errorResponse = err as { response?: { data?: { message?: string } } };
-    error.value = errorResponse.response?.data?.message || 'Error al cargar la lección';
+    const errorResponse = err as { 
+      response?: { 
+        data?: { 
+          message?: string;
+          error?: string;
+          status?: string;
+        };
+        status?: number;
+      } 
+    };
+    
+    // Manejar errores específicos de inscripción
+    if (errorResponse.response?.status === 403) {
+      const errorCode = errorResponse.response.data?.error;
+      
+      if (errorCode === 'NOT_ENROLLED') {
+        error.value = '🔒 No estás inscrito en este curso. Contacta al administrador para inscribirte.';
+      } else if (errorCode === 'ENROLLMENT_NOT_ACTIVE') {
+        const enrollmentStatus = errorResponse.response.data?.status;
+        
+        if (enrollmentStatus === 'pending') {
+          error.value = '⏳ Tu inscripción está pendiente. Realiza el pago de la matrícula para activar el curso.';
+        } else if (enrollmentStatus === 'inactive') {
+          error.value = '⚠️ Tu acceso al curso ha sido suspendido. Contacta al administrador.';
+        } else {
+          error.value = errorResponse.response.data?.message || 'No tienes acceso a este curso.';
+        }
+      } else {
+        error.value = errorResponse.response.data?.message || 'No tienes permiso para acceder a esta lección.';
+      }
+    } else {
+      error.value = errorResponse.response?.data?.message || 'Error al cargar la lección';
+    }
   } finally {
     loading.value = false;
   }
@@ -569,7 +600,6 @@ function restartLesson() {
 
 async function finishGameDueToErrors() {
   // Terminar juego por 5 errores consecutivos
-  console.log('🚫 Game Over: 5 errores consecutivos');
   finishedByErrors.value = true; // Marcar que terminó por errores
   passedLesson.value = false; // No puede aprobar si terminó por errores
   

@@ -283,6 +283,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/store/auth';
 import { getCourseBySlug, deleteLevel, deleteLesson, type Course } from '@/services/courseService';
 import { getCategoriesByCourse, type Category } from '@/services/categoryService';
+import { getMyEnrollments, type Enrollment } from '@/services/enrollmentService';
 import { getFullUrl } from '@/utils/urlHelper';
 import ImageAudioUploadModal from '@/components/dashboard/ImageAudioUploadModal.vue';
 import CategoryCreateModal from '@/components/dashboard/CategoryCreateModal.vue';
@@ -303,8 +304,12 @@ const showCategoriesPanel = ref(false);
 const categories = ref<Category[]>([]);
 const audioRef = ref<HTMLAudioElement|null>(null);
 const editingCategory = ref<Category | null>(null);
+const userEnrollment = ref<Enrollment | null>(null);
+const checkingEnrollment = ref(false);
 
 const isAdmin = computed(() => auth.getUserRole === 'admin');
+const isEnrolled = computed(() => !!userEnrollment.value);
+const enrollmentStatus = computed(() => userEnrollment.value?.status || null);
 
 async function fetchCategories() {
   if (!isAdmin.value || !course.value) return;
@@ -312,6 +317,44 @@ async function fetchCategories() {
     categories.value = await getCategoriesByCourse(course.value.slug);
   } catch {
     if (isAdmin.value) error.value = 'No se pudieron cargar las categorías.';
+  }
+}
+
+async function checkEnrollment(courseId: number) {
+  if (isAdmin.value) {
+    // Los admins tienen acceso a todos los cursos
+    userEnrollment.value = null;
+    return true;
+  }
+
+  try {
+    checkingEnrollment.value = true;
+    const enrollments = await getMyEnrollments();
+    const enrollment = enrollments.find(e => e.course_id === courseId);
+    
+    userEnrollment.value = enrollment || null;
+    
+    if (!enrollment) {
+      error.value = '🔒 No estás inscrito en este curso. Contacta al administrador para inscribirte.';
+      return false;
+    }
+    
+    if (enrollment.status !== 'active') {
+      if (enrollment.status === 'pending') {
+        error.value = '⏳ Tu inscripción está pendiente. Realiza el pago de la matrícula para activar el curso.';
+      } else if (enrollment.status === 'inactive') {
+        error.value = '⚠️ Tu acceso al curso ha sido suspendido. Contacta al administrador para más información.';
+      }
+      return false;
+    }
+    
+    return true;
+  } catch (err) {
+    console.error('Error al verificar inscripción:', err);
+    error.value = 'Error al verificar tu inscripción. Por favor, intenta más tarde.';
+    return false;
+  } finally {
+    checkingEnrollment.value = false;
   }
 }
 
@@ -325,6 +368,15 @@ onMounted(async () => {
 
   try {
     course.value = await getCourseBySlug(slug);
+    
+    // Verificar inscripción antes de cargar el resto
+    const hasAccess = await checkEnrollment(course.value.id);
+    
+    if (!hasAccess) {
+      loading.value = false;
+      return;
+    }
+    
     await fetchCategories();
   } catch (err) {
     console.error("Error al cargar el curso o categorías:", err);
@@ -390,9 +442,8 @@ const editLesson = (lessonId: number) => {
   });
 };
 
-const goToLesson = (lessonId: number) => {
-  // Implementar navegación a la página de la lección
-  console.log(`Ir a la lección ${lessonId}`);
+const goToLesson = (_lessonId: number) => {
+  // TODO: Implementar navegación a la página de la lección si es necesario
 };
 
 function goToCourses() {
@@ -425,10 +476,8 @@ function closeUploadModal() {
 }
 
 function openCategoryModal() {
-  console.log('Opening category modal, current value:', showCategoryModal.value);
   editingCategory.value = null; // Reset para crear nueva
   showCategoryModal.value = true;
-  console.log('After setting, value is:', showCategoryModal.value);
 }
 
 function closeCategoryModal() {

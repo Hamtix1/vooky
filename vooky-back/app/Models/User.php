@@ -64,4 +64,42 @@ class User extends Authenticatable
             ->withPivot('earned_at')
             ->withTimestamps();
     }
+
+    // Inscripciones del usuario
+    public function enrollments()
+    {
+        return $this->hasMany(Enrollment::class);
+    }
+
+    /**
+     * Inscripciones activas
+     */
+    public function activeEnrollments()
+    {
+        return $this->enrollments()->where('status', 'active');
+    }
+
+    /**
+     * Obtener todas las matrículas del usuario
+     */
+    public function tuitionFees()
+    {
+        return $this->hasManyThrough(TuitionFee::class, Enrollment::class);
+    }
+
+    /**
+     * Matrículas pendientes
+     */
+    public function pendingFees()
+    {
+        return $this->tuitionFees()->where('status', 'pending');
+    }
+
+    /**
+     * Matrículas vencidas
+     */
+    public function overdueFees()
+    {
+        return $this->tuitionFees()->where('status', 'overdue');
+    }
 }

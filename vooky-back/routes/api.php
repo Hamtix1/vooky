@@ -8,7 +8,7 @@ use App\Http\Controllers\LevelController;
 use App\Http\Controllers\LessonController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\AudioController;
-use App\Http\Controllers\QuestionController;
+// use App\Http\Controllers\QuestionController; // TODO: Crear controlador
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\AdminUserController;
@@ -17,6 +17,7 @@ use App\Http\Controllers\LessonGameController;
 use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\BadgeController;
 use App\Http\Controllers\StatsController;
+use App\Http\Controllers\TuitionFeeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -72,7 +73,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('levels.lessons', LessonController::class);
     Route::apiResource('images', ImageController::class);
     Route::apiResource('audios', AudioController::class);
-    Route::apiResource('questions', QuestionController::class);
+    // Route::apiResource('questions', QuestionController::class); // TODO: Crear controlador
     
     // Gestión de insignias (CRUD completo para admin)
     Route::get('badges', [BadgeController::class, 'all']);
@@ -84,10 +85,28 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Estadísticas del dashboard (solo admin)
     Route::get('stats/dashboard', [StatsController::class, 'dashboard']);
-    });
+    
+        // Gestión de matrículas (admin)
+    Route::get('admin/tuition-fees', [TuitionFeeController::class, 'index']);
+    Route::post('admin/tuition-fees', [TuitionFeeController::class, 'store']);
+    Route::put('admin/tuition-fees/{tuitionFee}', [TuitionFeeController::class, 'update']);
+    Route::delete('admin/tuition-fees/{tuitionFee}', [TuitionFeeController::class, 'destroy']);
+    Route::post('admin/tuition-fees/{tuitionFee}/mark-paid', [TuitionFeeController::class, 'markAsPaid']);
+    Route::get('admin/tuition-fees/statistics', [TuitionFeeController::class, 'statistics']);
+    
+    // Gestión de inscripciones (admin) - NUEVO SISTEMA
+    Route::get('admin/enrollments', [EnrollmentController::class, 'index']);
+    Route::post('admin/enrollments', [EnrollmentController::class, 'enrollUser']);
+    Route::delete('admin/enrollments', [EnrollmentController::class, 'unenrollUser']);
 
-    // --- RUTAS PARA USUARIOS GENERALES (PARENTS) ---
-    // Si quisieras que los 'parents' pudieran VER los cursos pero no crearlos,
+    // Actualizar estado de inscripción
+    Route::put('admin/enrollments/{enrollment}/status', [EnrollmentController::class, 'updateStatus']);
+    
+    }); // fin middleware admin
+
+    // --- RUTAS PARA USUARIOS AUTENTICADOS (NO ADMIN) ---
+    // Estas rutas están disponibles para todos los usuarios autenticados.
+    // Si quieres restringir algo solo a 'parent', podrías usar otro middleware.
     // podrías definir rutas de solo lectura aquí. Por ejemplo:
     
     Route::get('courses', [CourseController::class, 'index']);
@@ -96,21 +115,26 @@ Route::middleware('auth:sanctum')->group(function () {
     //Endpoint para regresar pool de imagenes
     Route::get('lessons/{lesson}/question-pool', [LessonController::class, 'getQuestionPool']);
 
-    // Inscripción y progreso de cursos y lecciones    
-    Route::post('courses/{course}/enroll', [EnrollmentController::class, 'enroll']);
-    Route::post('courses/{course}/unenroll', [EnrollmentController::class, 'unenroll']);
-    Route::post('lessons/{lesson}/complete', [EnrollmentController::class, 'completeLesson']);
-    Route::post('lessons/{lesson}/uncomplete', [EnrollmentController::class, 'uncompleteLesson']);
+    // Ver mis inscripciones (usuario autenticado)
+    Route::get('my-enrollments', [EnrollmentController::class, 'myEnrollments']);
+    
+    // Progreso de lecciones
+    Route::post('lessons/{lesson}/complete', [EnrollmentController::class, 'completeLesson'])->middleware('enrolled');
+    Route::post('lessons/{lesson}/uncomplete', [EnrollmentController::class, 'uncompleteLesson'])->middleware('enrolled');
     Route::get('courses/{course}/progress', [EnrollmentController::class, 'courseProgress']);
     
-    // Rutas del juego de lecciones
-    Route::get('lessons/{lesson}/questions', [LessonGameController::class, 'getQuestions']);
-    Route::post('lessons/{lesson}/result', [LessonGameController::class, 'saveResult']);
-    Route::get('lessons/{lesson}/progress', [LessonGameController::class, 'getProgress']);
+    // Rutas del juego de lecciones - REQUIEREN INSCRIPCIÓN ACTIVA
+    Route::middleware('enrolled')->group(function () {
+        Route::get('lessons/{lesson}/questions', [LessonGameController::class, 'getQuestions']);
+        Route::post('lessons/{lesson}/result', [LessonGameController::class, 'saveResult']);
+        Route::get('lessons/{lesson}/progress', [LessonGameController::class, 'getProgress']);
+    });
     
     // Rutas de insignias para usuarios (solo lectura)
     Route::get('users/{user}/courses/{course}/badges', [BadgeController::class, 'userBadges']);
     
+    // Rutas de matrículas para usuarios
+    Route::get('tuition-fees', [TuitionFeeController::class, 'userFees']);
+    Route::get('tuition-fees/pending', [TuitionFeeController::class, 'userPendingFees']);
     
-    // Por ahora, para máxima seguridad, hemos puesto todo bajo el control del admin.
-});
+}); // fin middleware auth:sanctum

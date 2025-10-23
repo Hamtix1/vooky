@@ -104,6 +104,24 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('@/pages/Ranking.vue'),
     meta: { requiresAuth: true, roles: ['admin', 'parent'] },
   },
+  {
+    path: '/tuition-fees',
+    name: 'TuitionFees',
+    component: () => import('@/pages/TuitionFees.vue'),
+    meta: { requiresAuth: true, roles: ['admin', 'parent'] },
+  },
+  {
+    path: '/admin/tuition-fees',
+    name: 'AdminTuitionFees',
+    component: () => import('@/pages/admin/TuitionFeesManagement.vue'),
+    meta: { requiresAuth: true, roles: ['admin'] },
+  },
+  {
+    path: '/my-courses',
+    name: 'MyCourses',
+    component: () => import('@/pages/MyCourses.vue'),
+    meta: { requiresAuth: true, roles: ['admin', 'parent'] },
+  },
 ]
 
 const router = createRouter({
