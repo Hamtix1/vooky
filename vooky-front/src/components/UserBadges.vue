@@ -36,6 +36,7 @@
 import { ref, onMounted } from 'vue';
 import { getUserBadges } from '@/services/badgeService';
 import type { UserBadge } from '@/types/badge';
+import { getImageUrl } from '@/utils/urlHelper';
 
 const userBadges = ref<UserBadge[]>([]);
 const loading = ref(false);
@@ -56,10 +57,20 @@ async function loadUserBadges() {
 }
 
 function getBadgeImageUrl(image: string): string {
-  if (image.startsWith('http')) {
-    return image;
+  if (!image) return '';
+  let path = image;
+  if (image.startsWith('/storage')) {
+    path = image;
+  } else if (image.startsWith('storage')) {
+    path = '/' + image;
+  } else if (image.startsWith('/badges')) {
+    path = '/storage' + image;
+  } else if (image.startsWith('badges')) {
+    path = '/storage/' + image;
+  } else if (!image.startsWith('http')) {
+    path = '/storage/badges/' + image;
   }
-  return `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}/storage/${image}`;
+  return getImageUrl(path);
 }
 
 function formatDate(dateString: string): string {

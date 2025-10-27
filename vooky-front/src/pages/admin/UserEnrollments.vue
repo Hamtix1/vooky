@@ -49,6 +49,7 @@
                 </select>
               </div>
               <button 
+                v-if="enrollment.course"
                 class="btn-unenroll" 
                 @click="confirmUnenroll(enrollment.course)"
                 :disabled="processing"
@@ -444,6 +445,10 @@ const enrollCourse = async () => {
     courseToEnroll.value = null
     customMonthlyFee.value = null
     
+    // Recargar datos para reflejar cambios
+    await fetchData();
+    await fetchTuitionFees();
+    
     setTimeout(() => {
       successMessage.value = ''
     }, 5000)
@@ -473,6 +478,10 @@ const unenrollCourse = async () => {
     successMessage.value = `Usuario desinscrito exitosamente de "${courseToUnenroll.value.title}"`
     showConfirmModal.value = false
     courseToUnenroll.value = null
+    
+    // Recargar datos para reflejar cambios
+    await fetchData();
+    await fetchTuitionFees();
     
     setTimeout(() => {
       successMessage.value = ''

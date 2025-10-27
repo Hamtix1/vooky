@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
+class UpdateDefaultRequiresPaymentInCoursesTable extends Migration
 {
     /**
      * Run the migrations.
@@ -12,8 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('courses', function (Blueprint $table) {
-            $table->decimal('monthly_fee', 10, 2)->default(0)->after('description');
-            $table->boolean('requires_payment')->default(true)->after('monthly_fee');
+            $table->boolean('requires_payment')->default(true)->change();
         });
     }
 
@@ -23,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('courses', function (Blueprint $table) {
-            $table->dropColumn(['monthly_fee', 'requires_payment']);
+            $table->boolean('requires_payment')->default(false)->change();
         });
     }
-};
+}

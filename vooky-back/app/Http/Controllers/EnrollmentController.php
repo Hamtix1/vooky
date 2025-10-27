@@ -74,11 +74,28 @@ class EnrollmentController extends Controller
             // Usar precio personalizado si existe, sino el del curso
             $feeAmount = $customFee ?? $course->monthly_fee;
 
-            \App\Models\TuitionFee::create([
+            \Log::info('[EnrollmentController] Intentando crear TuitionFee', [
+                'user_id' => $userId,
+                'course_id' => $courseId,
+                'enrollment_id' => $enrollment->id,
+                'feeAmount' => $feeAmount,
+                'due_date' => $firstDueDate,
+            ]);
+
+            $tuitionFee = \App\Models\TuitionFee::create([
                 'enrollment_id' => $enrollment->id,
                 'amount' => $feeAmount,
                 'due_date' => $firstDueDate,
                 'status' => 'pending',
+            ]);
+
+            \Log::info('[EnrollmentController] TuitionFee creado', [
+                'tuition_fee_id' => $tuitionFee ? $tuitionFee->id : null,
+                'user_id' => $userId,
+                'course_id' => $courseId,
+                'enrollment_id' => $enrollment->id,
+                'feeAmount' => $feeAmount,
+                'due_date' => $firstDueDate,
             ]);
 
             $message = 'Usuario inscrito exitosamente. Primera matrícula generada con vencimiento mañana (' . $firstDueDate->format('d/m/Y H:i') . '). Monto: $' . number_format($feeAmount, 2) . '. El curso se activará al confirmar el pago.';
@@ -114,7 +131,7 @@ class EnrollmentController extends Controller
             ], 404);
         }
 
-        $enrollment->deactivate();
+        $enrollment->delete();
 
         // Mantener compatibilidad con la tabla pivot course_user
         $user = \App\Models\User::find($userId);

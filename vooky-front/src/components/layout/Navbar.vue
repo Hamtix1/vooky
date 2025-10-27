@@ -157,18 +157,28 @@ const router = useRouter()
 const showUsersDropdown = ref(false)
 const showManagementDropdown = ref(false)
 const showMobileMenu = ref(false)
+let timer: any = null
 
 // Abrir/cerrar dropdowns por hover (escritorio) o clic (móvil)
 function openDropdown(type: 'users' | 'management') {
   if (window.innerWidth > 768) {
-    if (type === 'users') showUsersDropdown.value = true
-    if (type === 'management') showManagementDropdown.value = true
+    if (timer) clearTimeout(timer);
+    if (type === 'users') {
+      showUsersDropdown.value = true;
+      showManagementDropdown.value = false;
+    }
+    if (type === 'management') {
+      showManagementDropdown.value = true;
+      showUsersDropdown.value = false;
+    }
   }
 }
 function closeDropdown(type: 'users' | 'management') {
   if (window.innerWidth > 768) {
-    if (type === 'users') showUsersDropdown.value = false
-    if (type === 'management') showManagementDropdown.value = false
+    timer = setTimeout(() => {
+      if (type === 'users') showUsersDropdown.value = false
+      if (type === 'management') showManagementDropdown.value = false
+    }, 30);
   }
 }
 function toggleDropdown(type: 'users' | 'management') {

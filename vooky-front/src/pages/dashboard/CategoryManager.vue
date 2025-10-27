@@ -141,8 +141,11 @@
 </template>
 
 <script setup lang="ts">
+import { useRoute } from 'vue-router';
+const route = useRoute();
+const courseSlug = route.params.slug as string;
 import { ref, reactive, onMounted } from 'vue';
-import { getCategories } from '@/services/categoryService';
+import { getCategoriesByCourse } from '@/services/categoryService';
 import api from '@/config/api';
 
 interface Category {
@@ -164,9 +167,15 @@ async function fetchCategories() {
   loading.value = true;
   error.value = '';
   try {
-    categories.value = await getCategories();
-  } catch (err: any) {
-    error.value = err?.response?.data?.message || 'Error al cargar las categorías.';
+  // Reemplazar por getCategoriesByCourse, requiere el slug del curso
+  // Por ejemplo, si tienes una variable courseSlug:
+  // categories.value = await getCategoriesByCourse(courseSlug);
+  // Si no tienes courseSlug, debes obtenerlo del contexto/ruta
+  // Aquí se asume que existe una variable courseSlug
+  categories.value = await getCategoriesByCourse(courseSlug);
+  } catch (err: unknown) {
+    const errorResponse = err as { response?: { data?: { message?: string } } };
+    error.value = errorResponse.response?.data?.message || 'Error al cargar las categorías.';
   } finally {
     loading.value = false;
   }
@@ -202,8 +211,9 @@ async function handleSubmit() {
     }
     await fetchCategories();
     closeModal();
-  } catch (err: any) {
-    errorModal.value = err?.response?.data?.message || 'Error al guardar la categoría.';
+  } catch (err: unknown) {
+    const errorResponse = err as { response?: { data?: { message?: string } } };
+    errorModal.value = errorResponse.response?.data?.message || 'Error al guardar la categoría.';
   } finally {
     loadingModal.value = false;
   }
@@ -214,8 +224,9 @@ async function deleteCategory(id: number) {
   try {
     await api.delete(`/categories/${id}`);
     await fetchCategories();
-  } catch (err: any) {
-    alert(err?.response?.data?.message || 'Error al eliminar la categoría.');
+  } catch (err: unknown) {
+    const errorResponse = err as { response?: { data?: { message?: string } } };
+    alert(errorResponse.response?.data?.message || 'Error al eliminar la categoría.');
   }
 }
 
