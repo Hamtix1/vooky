@@ -93,95 +93,95 @@
     <!-- Results Screen -->
     <div v-else-if="gameState === 'finished'" class="game-results">
       <div class="results-content">
-        <h1 class="results-title">
-          {{ finishedByErrors ? '❌ Game Over' : (passedLesson ? '¡Aprobaste!' : '😔 Lección No Aprobada') }}
-        </h1>
-        
-        <!-- Badge de nuevo récord -->
-        <div v-if="isNewHighScore && !finishedByErrors" class="new-high-score-badge">
-          <div class="trophy-icon">🏆</div>
-          <p class="trophy-text">¡NUEVO RÉCORD!</p>
-          <p class="trophy-subtitle">Anterior: {{ bestScore }} pts → Ahora: {{ finalScore }} pts</p>
-        </div>
-        
-        <!-- Mensaje especial si terminó por errores -->
-        <div v-if="finishedByErrors" class="game-over-message">
-          <div class="game-over-icon">💔</div>
-          <p class="game-over-text">5 errores consecutivos</p>
-          <p class="game-over-subtitle">
-            {{ wasAlreadyCompleted ? '¡Pero tu lección sigue aprobada!' : 'No te desanimes, ¡puedes intentarlo de nuevo!' }}
+        <!-- Título Principal con emoji dinámico -->
+        <div class="results-header">
+          <div class="results-emoji">
+            {{ finishedByErrors ? '💔' : (passedLesson ? '🎉' : '📚') }}
+          </div>
+          <h1 class="results-title">
+            {{ finishedByErrors ? 'Game Over' : (passedLesson ? '¡Aprobaste!' : 'Necesitas Practicar Más') }}
+          </h1>
+          <p class="results-subtitle" v-if="finishedByErrors">
+            5 errores consecutivos
+          </p>
+          <p class="results-subtitle" v-else-if="!passedLesson">
+            Necesitas al menos 75% de aciertos
+          </p>
+          <p class="results-subtitle" v-else-if="isNewHighScore">
+            ¡Nuevo récord personal!
+          </p>
+          <p class="results-subtitle" v-else-if="accuracyPercentage >= 90">
+            ¡Excelente trabajo!
           </p>
         </div>
         
-        <!-- Mensaje si no aprobó (menos del 75%) -->
-        <div v-else-if="!passedLesson" class="failed-message">
-          <div class="failed-icon">📚</div>
-          <p class="failed-text">Necesitas al menos 75% de aciertos</p>
-          <p class="failed-subtitle">Tu porcentaje: {{ accuracyPercentage }}%</p>
-        </div>
-        
-        <div class="score-circle" :class="scoreClass">
-          <div class="score-value">{{ finalScore.toLocaleString() }}</div>
-          <div class="score-label">PUNTOS</div>
-          <div class="score-sublabel">Intento actual: {{ accuracyPercentage }}%</div>
+        <!-- Círculo de Puntuación Principal -->
+        <div class="score-display">
+          <div class="score-circle" :class="scoreClass">
+            <div class="score-value">{{ finalScore.toLocaleString() }}</div>
+            <div class="score-label">PUNTOS</div>
+          </div>
+          <div class="accuracy-badge" :class="{ 'passed': passedLesson, 'failed': !passedLesson }">
+            <span class="accuracy-value">{{ accuracyPercentage }}%</span>
+            <span class="accuracy-label">Precisión</span>
+          </div>
         </div>
 
-        <div class="results-stats">
-          <div class="stats-row">
-            <div class="stat-item">
-              <div class="stat-icon correct">✓</div>
-              <div class="stat-info">
-                <div class="stat-value">{{ correctAnswers }}</div>
-                <div class="stat-label">Correctas</div>
-              </div>
-            </div>
+        <!-- Estadísticas en Cards -->
+        <div class="results-stats-grid">
+          <div class="stat-card correct">
+            <div class="stat-icon">✓</div>
+            <div class="stat-number">{{ correctAnswers }}</div>
+            <div class="stat-label">Correctas</div>
+          </div>
 
-            <div class="stat-item">
-              <div class="stat-icon incorrect">✗</div>
-              <div class="stat-info">
-                <div class="stat-value">{{ incorrectAnswers }}</div>
-                <div class="stat-label">Incorrectas</div>
-              </div>
-            </div>
+          <div class="stat-card incorrect">
+            <div class="stat-icon">✗</div>
+            <div class="stat-number">{{ incorrectAnswers }}</div>
+            <div class="stat-label">Incorrectas</div>
           </div>
           
-          <!-- Mostrar mejor puntuación si es diferente - fila separada -->
-          <div v-if="bestScore > finalScore && !finishedByErrors" class="best-score-row">
-            <div class="stat-item best-score">
-              <div class="stat-icon trophy">🏆</div>
-              <div class="stat-info">
-                <div class="stat-value">{{ bestScore.toLocaleString() }} pts</div>
-                <div class="stat-label">Tu Récord</div>
-              </div>
-            </div>
+          <div v-if="bestScore > finalScore && !finishedByErrors" class="stat-card record">
+            <div class="stat-icon">🏆</div>
+            <div class="stat-number">{{ bestScore.toLocaleString() }}</div>
+            <div class="stat-label">Tu Récord</div>
+          </div>
+          
+          <div v-else-if="isNewHighScore && !finishedByErrors" class="stat-card new-record">
+            <div class="stat-icon">⭐</div>
+            <div class="stat-number">¡Nuevo!</div>
+            <div class="stat-label">Récord</div>
           </div>
         </div>
 
-        <div class="results-message" v-if="passedLesson && !wasAlreadyCompleted">
-          <p v-if="accuracyPercentage >= 90">🎉 ¡Excelente trabajo!</p>
-          <p v-else-if="accuracyPercentage >= 80">👍 ¡Buen trabajo!</p>
-          <p v-else>✅ ¡Aprobaste!</p>
-        </div>
-        
-        <div class="results-message" v-else-if="passedLesson && wasAlreadyCompleted && isNewHighScore">
-          <p>🌟 ¡Mejoraste tu puntuación!</p>
-        </div>
-
-        <div class="results-actions" :class="{ 
-          'dual-actions': !passedLesson || wasAlreadyCompleted,
-          'triple-actions': passedLesson && nextLesson
-        }">
-          <button v-if="!passedLesson || wasAlreadyCompleted" @click="handleRestartLesson" class="btn-retry">
+        <!-- Botones de Acción -->
+        <div class="results-actions">
+          <!-- Botón de Reintentar (solo si no aprobó o quiere mejorar) -->
+          <button 
+            v-if="!passedLesson || wasAlreadyCompleted" 
+            @click="handleRestartLesson" 
+            class="btn-action btn-retry">
             <span class="btn-icon">🔄</span>
-            {{ wasAlreadyCompleted ? 'Mejorar Puntuación' : 'Reintentar Lección' }}
+            <span class="btn-text">
+              {{ wasAlreadyCompleted ? 'Mejorar Puntuación' : 'Reintentar' }}
+            </span>
           </button>
-          <button v-if="passedLesson && nextLesson" @click="handleNextLesson" class="btn-success">
-            <span class="btn-icon">➡️</span>
-            Siguiente Lección
+          
+          <!-- Botón de Siguiente Lección (solo si aprobó y hay siguiente) -->
+          <button 
+            v-if="passedLesson && nextLesson" 
+            @click="handleNextLesson" 
+            class="btn-action btn-next">
+            <span class="btn-text">Siguiente Lección</span>
+            <span class="btn-icon">→</span>
           </button>
-          <button @click="handleBackToMap" class="btn-primary">
+          
+          <!-- Botón de Volver al Mapa (siempre visible) -->
+          <button 
+            @click="handleBackToMap" 
+            class="btn-action btn-map">
             <span class="btn-icon">🗺️</span>
-            Volver al Mapa
+            <span class="btn-text">Volver al Mapa</span>
           </button>
         </div>
       </div>
@@ -445,6 +445,14 @@ function handleExitGame() {
 function handleNextLesson() {
   if (!nextLesson.value) return;
   playUIClick();
+  
+  // Resetear las variables antes de cambiar de lección
+  currentQuestionIndex.value = 0;
+  correctAnswers.value = 0;
+  incorrectAnswers.value = 0;
+  consecutiveErrors.value = 0;
+  
+  // Emitir el evento para cambiar a la siguiente lección
   emit('next-lesson', nextLesson.value.id);
 }
 
@@ -1169,239 +1177,79 @@ onUnmounted(() => {
 
 .results-content {
   background: white;
-  padding: 3rem 2rem;
+  padding: 3rem 2.5rem;
   border-radius: 24px;
   text-align: center;
-  max-width: 800px;
+  max-width: 700px;
   width: 100%;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: slideInUp 0.5s ease;
+  animation: slideInUp 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 @keyframes slideInUp {
   from {
     opacity: 0;
-    transform: translateY(50px);
+    transform: translateY(60px) scale(0.9);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
+}
+
+/* Header Section - Título con Emoji */
+.results-header {
+  margin-bottom: 2rem;
+}
+
+.results-emoji {
+  font-size: 5rem;
+  margin-bottom: 0.5rem;
+  animation: bounceIn 0.8s ease;
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 
 .results-title {
   color: #2c3e50;
-  font-size: clamp(2rem, 5vw, 3rem);
-  margin-bottom: 2rem;
+  font-size: clamp(2rem, 5vw, 2.5rem);
+  margin-bottom: 0.5rem;
   line-height: 1.2;
+  font-weight: 700;
 }
 
-/* Game Over Message Styles */
-.game-over-message {
-  background: linear-gradient(135deg, #fdcbcb 0%, #fdeaea 100%);
-  border: 2px solid #e74c3c;
-  border-radius: 16px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  text-align: center;
-  animation: shakeIn 0.6s ease;
-}
-
-.game-over-icon {
-  font-size: 4rem;
-  margin-bottom: 0.5rem;
-  animation: heartbeat 1.5s ease infinite;
-}
-
-.game-over-text {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #c0392b;
-  margin: 0.5rem 0;
-}
-
-.game-over-subtitle {
+.results-subtitle {
   font-size: 1.1rem;
   color: #7f8c8d;
-  margin: 0.5rem 0 0 0;
-}
-
-@keyframes shakeIn {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-  20%, 40%, 60%, 80% { transform: translateX(5px); }
-}
-
-@keyframes heartbeat {
-  0%, 100% { transform: scale(1); }
-  10%, 30% { transform: scale(0.9); }
-  20%, 40% { transform: scale(1.1); }
-}
-
-/* Failed Message Styles */
-.failed-message {
-  background: linear-gradient(135deg, #fff3cd 0%, #ffe5b4 100%);
-  border: 2px solid #f39c12;
-  border-radius: 16px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  text-align: center;
-  animation: fadeInDown 0.5s ease;
-}
-
-.failed-icon {
-  font-size: 4rem;
-  margin-bottom: 0.5rem;
-  animation: bounce 1s ease infinite;
-}
-
-.failed-text {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #d68910;
-  margin: 0.5rem 0;
-}
-
-.failed-subtitle {
-  font-size: 1.2rem;
-  color: #7f8c8d;
-  margin: 0.5rem 0 0 0;
-  font-weight: 600;
-}
-
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-/* Passed Badge Styles */
-.passed-badge {
-  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-  border: 2px solid #28a745;
-  border-radius: 16px;
-  padding: 1rem 1.5rem;
-  margin-bottom: 2rem;
-  text-align: center;
-  animation: scaleIn 0.5s ease;
-}
-
-.badge-icon {
-  font-size: 3rem;
-  margin-bottom: 0.3rem;
-  animation: sparkle 1.5s ease infinite;
-}
-
-.badge-text {
-  font-size: 1.3rem;
-  font-weight: bold;
-  color: #155724;
   margin: 0;
 }
 
-.badge-subtitle {
-  font-size: 1rem;
-  color: #155724;
-  margin: 0.5rem 0 0 0;
-  opacity: 0.8;
-}
-
-@keyframes sparkle {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.1); }
-}
-
-/* Backend Message Styles */
-.backend-message {
-  border-radius: 12px;
-  padding: 1rem 1.5rem;
-  margin-bottom: 1.5rem;
-  text-align: center;
-  animation: fadeIn 0.5s ease;
-  font-weight: 500;
-}
-
-.backend-message.success {
-  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-  border: 2px solid #28a745;
-  color: #155724;
-}
-
-.backend-message.info {
-  background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-  border: 2px solid #17a2b8;
-  color: #0c5460;
-}
-
-.backend-message.warning {
-  background: linear-gradient(135deg, #fff3cd 0%, #ffe5b4 100%);
-  border: 2px solid #ffc107;
-  color: #856404;
-}
-
-.backend-message p {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-/* New High Score Badge */
-.new-high-score-badge {
-  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 50%, #ffd700 100%);
-  border: 3px solid #f39c12;
-  border-radius: 16px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  text-align: center;
-  animation: pulse 1s ease infinite, glow 2s ease infinite;
-  box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
-}
-
-.trophy-icon {
-  font-size: 4rem;
-  margin-bottom: 0.5rem;
-  animation: rotate 2s ease infinite;
-}
-
-.trophy-text {
-  font-size: 1.8rem;
-  font-weight: bold;
-  color: #d68910;
-  margin: 0.5rem 0;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.trophy-subtitle {
-  font-size: 1.1rem;
-  color: #856404;
-  margin: 0.5rem 0 0 0;
-  font-weight: 600;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.02); }
-}
-
-@keyframes glow {
-  0%, 100% { box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3); }
-  50% { box-shadow: 0 10px 40px rgba(255, 215, 0, 0.6); }
-}
-
-@keyframes rotate {
-  0%, 100% { transform: rotate(-5deg); }
-  50% { transform: rotate(5deg); }
+/* Score Display - Círculo de Puntuación y Badge de Precisión */
+.score-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  margin: 2rem 0;
+  flex-wrap: wrap;
 }
 
 .score-circle {
-  width: 180px;
-  height: 180px;
+  width: 200px;
+  height: 200px;
   border-radius: 50%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 2rem;
-  border: 8px solid;
-  animation: scaleIn 0.5s ease;
+  border: 10px solid;
+  animation: scaleIn 0.7s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  position: relative;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
 }
 
 .score-circle.excellent {
@@ -1419,106 +1267,100 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #fadbd8, #f8b4b0);
 }
 
+@keyframes scaleIn {
+  0% { transform: scale(0) rotate(-180deg); }
+  60% { transform: scale(1.1) rotate(10deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
 .score-value {
   font-size: 3.5rem;
-  font-weight: bold;
+  font-weight: 800;
   color: #2c3e50;
+  line-height: 1;
 }
 
 .score-label {
-  font-size: 1rem;
-  color: #7f8c8d;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.score-comparison {
-  margin-top: 0.5rem;
   font-size: 0.9rem;
   color: #7f8c8d;
-  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-weight: 600;
+  margin-top: 0.5rem;
 }
 
-.score-comparison small {
-  display: block;
-  margin-top: 0.3rem;
-}
-
-@keyframes scaleIn {
-  0% {
-    transform: scale(0);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-.results-stats {
+/* Badge de Precisión */
+.accuracy-badge {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  padding: 1.5rem 2rem;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  animation: slideInRight 0.6s ease;
 }
 
-.stats-row {
-  display: flex;
-  justify-content: center;
-  gap: 3rem;
-  width: 100%;
+.accuracy-badge.passed {
+  background: linear-gradient(135deg, #d5f4e6, #a8e6cf);
+  border: 3px solid #27ae60;
 }
 
-.best-score-row {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  margin-top: 0.5rem;
+.accuracy-badge.failed {
+  background: linear-gradient(135deg, #fadbd8, #f8b4b0);
+  border: 3px solid #e74c3c;
 }
 
-.stat-item {
-  display: flex;
-  align-items: center;
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.accuracy-value {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #2c3e50;
+  line-height: 1;
+}
+
+.accuracy-label {
+  font-size: 0.85rem;
+  color: #7f8c8d;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-top: 0.3rem;
+  font-weight: 600;
+}
+
+/* Stats Grid - Tarjetas de Estadísticas */
+.results-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 1rem;
+  margin: 2rem 0;
 }
 
-.stat-icon {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
+.stat-card {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 16px;
+  padding: 1.5rem 1rem;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  font-weight: bold;
+  gap: 0.5rem;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  animation: fadeInUp 0.6s ease backwards;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.stat-icon.correct {
-  background: #d5f4e6;
-  color: #27ae60;
-}
-
-.stat-icon.incorrect {
-  background: #fadbd8;
-  color: #e74c3c;
-}
-
-.stat-icon.trophy {
-  background: linear-gradient(135deg, #ffd700, #ffed4e);
-  color: #d68910;
-  font-size: 1.8rem;
-  animation: sparkle 1.5s ease infinite;
-}
-
-.stat-item.best-score {
-  background: linear-gradient(135deg, #fff4e6, #ffe8cc);
-  border: 2px solid #f39c12;
-  border-radius: 12px;
-  padding: 0.5rem 1rem;
-  animation: fadeInUp 0.5s ease;
-}
+.stat-card:nth-child(1) { animation-delay: 0.1s; }
+.stat-card:nth-child(2) { animation-delay: 0.2s; }
+.stat-card:nth-child(3) { animation-delay: 0.3s; }
 
 @keyframes fadeInUp {
   from {
@@ -1531,76 +1373,150 @@ onUnmounted(() => {
   }
 }
 
-.stat-value {
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.stat-card.correct {
+  background: linear-gradient(135deg, #d5f4e6, #a8e6cf);
+  border: 2px solid #27ae60;
+}
+
+.stat-card.incorrect {
+  background: linear-gradient(135deg, #fadbd8, #f8b4b0);
+  border: 2px solid #e74c3c;
+}
+
+.stat-card.record {
+  background: linear-gradient(135deg, #fff4e6, #ffe8cc);
+  border: 2px solid #f39c12;
+}
+
+.stat-card.new-record {
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 50%, #ffd700 100%);
+  border: 3px solid #f39c12;
+  animation: pulse 1.5s ease infinite, glow 2s ease infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 8px 20px rgba(255, 215, 0, 0.4); }
+  50% { box-shadow: 0 8px 30px rgba(255, 215, 0, 0.7); }
+}
+
+.stat-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.stat-number {
   font-size: 2rem;
-  font-weight: bold;
+  font-weight: 800;
   color: #2c3e50;
+  line-height: 1;
 }
 
 .stat-label {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #7f8c8d;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
 }
 
-.results-message {
-  font-size: 1.5rem;
-  margin: 2rem 0;
-}
-
+/* Botones de Acción */
 .results-actions {
-  margin-top: 2rem;
+  margin-top: 2.5rem;
   display: flex;
   gap: 1rem;
   justify-content: center;
   flex-wrap: wrap;
-  width: 100%;
 }
 
-.results-actions.dual-actions {
-  justify-content: center;
-}
-
-.results-actions.triple-actions {
-  justify-content: center;
-  gap: 1rem;
-}
-
-.results-actions button {
+.btn-action {
   flex: 1;
-  min-width: 200px;
-  max-width: 280px;
-}
-
-.btn-success {
-  background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
-  color: white;
+  min-width: 180px;
+  max-width: 220px;
+  padding: 1rem 1.5rem;
   border: none;
-  padding: 1rem 2rem;
   border-radius: 12px;
   font-size: 1.1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  position: relative;
+  overflow: hidden;
 }
 
-.btn-success:hover {
-  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+.btn-action::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
 }
 
-.btn-success:active {
-  transform: translateY(0);
+.btn-action:hover::before {
+  width: 300px;
+  height: 300px;
 }
 
-.btn-success .btn-icon {
-  font-size: 1.3rem;
-  display: inline-block;
+.btn-action:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.btn-action:active {
+  transform: translateY(-1px);
+}
+
+.btn-retry {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+}
+
+.btn-retry:hover {
+  background: linear-gradient(135deg, #2980b9 0%, #21618c 100%);
+}
+
+.btn-retry .btn-icon {
+  animation: rotateIcon 2s linear infinite;
+}
+
+.btn-retry:hover .btn-icon {
+  animation: rotateIcon 0.5s linear infinite;
+}
+
+@keyframes rotateIcon {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.btn-next {
+  background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+  color: white;
+}
+
+.btn-next:hover {
+  background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
+}
+
+.btn-next .btn-icon {
   animation: slideRight 1s ease infinite;
 }
 
@@ -1609,46 +1525,24 @@ onUnmounted(() => {
   50% { transform: translateX(5px); }
 }
 
-.btn-retry {
-  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+.btn-map {
+  background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
   color: white;
-  border: none;
-  padding: 1rem 2rem;
-  border-radius: 12px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
 }
 
-.btn-retry:hover {
-  background: linear-gradient(135deg, #2980b9 0%, #3498db 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+.btn-map:hover {
+  background: linear-gradient(135deg, #8e44ad 0%, #71368a 100%);
 }
 
-.btn-retry:active {
-  transform: translateY(0);
-}
-
-.btn-retry .btn-icon {
+.btn-icon {
   font-size: 1.3rem;
-  display: inline-block;
-  animation: rotateIcon 2s linear infinite;
+  position: relative;
+  z-index: 1;
 }
 
-.btn-retry:hover .btn-icon {
-  animation: rotateIcon 0.6s linear infinite;
-}
-
-@keyframes rotateIcon {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+.btn-text {
+  position: relative;
+  z-index: 1;
 }
 
 /* Modal */
@@ -1871,91 +1765,95 @@ onUnmounted(() => {
 
   /* Results screen responsive */
   .results-content {
-    padding: 2rem 1rem;
+    padding: 2rem 1.5rem;
     max-width: 100%;
   }
 
+  .results-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .results-emoji {
+    font-size: 3.5rem;
+  }
+
   .results-title {
-    font-size: clamp(1.5rem, 4vw, 2rem);
+    font-size: clamp(1.5rem, 5vw, 2rem);
+  }
+
+  .results-subtitle {
+    font-size: 0.95rem;
+  }
+
+  .score-display {
+    flex-direction: column;
+    gap: 1.5rem;
+    margin: 1.5rem 0;
   }
 
   .score-circle {
-    width: 140px;
-    height: 140px;
+    width: 160px;
+    height: 160px;
+    border-width: 8px;
   }
 
   .score-value {
-    font-size: 2rem;
+    font-size: 2.8rem;
   }
 
   .score-label {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
   }
 
-  .score-sublabel {
+  .accuracy-badge {
+    padding: 1rem 1.5rem;
+  }
+
+  .accuracy-value {
+    font-size: 2rem;
+  }
+
+  .accuracy-label {
+    font-size: 0.75rem;
+  }
+
+  .results-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    margin: 1.5rem 0;
+  }
+
+  .stat-card {
+    padding: 1rem;
+  }
+
+  .stat-icon {
+    font-size: 2rem;
+  }
+
+  .stat-number {
+    font-size: 1.6rem;
+  }
+
+  .stat-label {
     font-size: 0.75rem;
   }
 
   .results-actions {
+    margin-top: 1.5rem;
     flex-direction: column;
     gap: 0.75rem;
   }
 
-  .results-actions button {
+  .btn-action {
     min-width: 100%;
     max-width: 100%;
     font-size: 1rem;
-    padding: 0.875rem 1.5rem;
+    padding: 0.875rem 1.25rem;
   }
 
-  .results-stats {
-    gap: 0.75rem;
-  }
-
-  .stats-row {
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .best-score-row {
-    margin-top: 0;
-  }
-
-  .stat-item {
-    width: 100%;
-  }
-
-  .backend-message {
-    font-size: 0.95rem;
-    padding: 1rem;
-  }
-
-  .new-high-score-badge,
-  .game-over-message,
-  .failed-message,
-  .passed-badge {
-    padding: 1rem;
-  }
-
-  .trophy-icon,
-  .game-over-icon,
-  .failed-icon,
-  .badge-icon {
-    font-size: 2.5rem;
-  }
-
-  .trophy-text,
-  .game-over-text,
-  .failed-text,
-  .badge-text {
-    font-size: 1.2rem;
-  }
-
-  .trophy-subtitle,
-  .game-over-subtitle,
-  .failed-subtitle,
-  .badge-subtitle {
-    font-size: 0.95rem;
+  .btn-icon {
+    font-size: 1.1rem;
   }
 }
 </style>
