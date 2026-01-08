@@ -81,3 +81,28 @@ export async function getLessonProgress(lessonId: number): Promise<LessonProgres
   const response = await api.get(`/lessons/${lessonId}/progress`);
   return response.data;
 }
+
+/**
+ * OPTIMIZACIÓN: Obtiene el progreso de MÚLTIPLES lecciones en una sola llamada
+ * Evita N+1 queries cuando se carga un mapa de curso completo
+ * 
+ * @param lessonIds - Array de IDs de lecciones
+ * @returns Mapa con progreso por lesson_id
+ */
+export async function getLessonProgressBatch(lessonIds: number[]): Promise<Record<number, LessonProgress>> {
+  if (lessonIds.length === 0) {
+    return {};
+  }
+  
+  try {
+    const response = await api.post<{ data: Record<number, LessonProgress> }>(
+      '/lessons/batch/progress',
+      { lesson_ids: lessonIds }
+    );
+    return response.data.data;
+  } catch (error) {
+    console.error('Error loading batch lesson progress:', error);
+    // Fallback: retornar un objeto vacío si la ruta no existe
+    return {};
+  }
+}

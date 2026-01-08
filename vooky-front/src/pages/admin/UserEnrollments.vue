@@ -381,12 +381,12 @@ const courseToEnroll = ref<Course | null>(null)
 const customMonthlyFee = ref<number | null>(null)
 
 const enrolledCourses = computed(() => {
-  const enrolledIds = enrollments.value.map(e => e.course_id)
+  const enrolledIds = enrollments.value.map(e => Number(e.course_id))
   return allCourses.value.filter(course => enrolledIds.includes(course.id))
 })
 
 const availableCourses = computed(() => {
-  const enrolledIds = enrollments.value.map(e => e.course_id)
+  const enrolledIds = enrollments.value.map(e => Number(e.course_id))
   return allCourses.value.filter(course => !enrolledIds.includes(course.id))
 })
 

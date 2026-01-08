@@ -3,10 +3,9 @@
     <div v-if="combo > 1" class="combo-counter" ref="comboElement">
       <div class="combo-flame">🔥</div>
       <div class="combo-content">
-        <div class="combo-number">{{ combo }}</div>
-        <div class="combo-label">COMBO</div>
+        <div class="combo-multiplier">×{{ multiplier.toFixed(1) }}</div>
       </div>
-      <div class="combo-multiplier">×{{ multiplier.toFixed(1) }}</div>
+      
       <div class="combo-ripple"></div>
       <div class="combo-particles"></div>
     </div>
@@ -67,13 +66,12 @@ watch(() => props.combo, (newVal, oldVal) => {
 
 <style scoped>
 .combo-counter {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 0.75rem;
   background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 50%, #FFA07A 100%);
   padding: 0.75rem 1.75rem;
-  border-radius: 50px;
+  border-radius: 50%;
   box-shadow: 
     0 5px 25px rgba(255, 107, 107, 0.6),
     0 0 40px rgba(255, 107, 107, 0.3);
@@ -147,7 +145,7 @@ watch(() => props.combo, (newVal, oldVal) => {
   width: 100%;
   height: 100%;
   border: 4px solid rgba(255, 255, 255, 0.9);
-  border-radius: 50%;
+  border-radius: 30%;
   pointer-events: none;
 }
 

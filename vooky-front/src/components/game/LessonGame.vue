@@ -11,17 +11,18 @@
       <div class="error-icon">⚠️</div>
       <h2>Error al cargar la lección</h2>
       <p>{{ error }}</p>
-      <button @click="$emit('close')" class="btn-primary">Volver</button>
+      <button @click="handleClose" class="btn-primary">Volver</button>
     </div>
 
     <!-- Game Playing -->
     <div v-else-if="gameState === 'playing' && currentQuestion" class="game-container" ref="gameContainer">
       <!-- HUD Superior -->
       <div class="game-header">
-        <button @click="confirmExit" class="btn-exit">← Salir</button>
-        
         <!-- Combo Counter (centro) -->
         <ComboCounter :combo="currentCombo" :multiplier="comboMultiplier" />
+        <button @click="handleConfirmExit" class="btn-exit">← Salir</button>
+        
+        
         
         <div class="header-right">
           <div class="progress-info">
@@ -30,7 +31,7 @@
               <div class="progress-bar-fill" :style="{ width: progressPercentage + '%' }"></div>
             </div>
           </div>
-          <button @click="toggleFullscreen" class="btn-fullscreen" :title="isFullscreen ? 'Salir de pantalla completa (Esc)' : 'Pantalla completa'">
+          <button @click="handleToggleFullscreen" class="btn-fullscreen" :title="isFullscreen ? 'Salir de pantalla completa (Esc)' : 'Pantalla completa'">
             <font-awesome-icon :icon="isFullscreen ? 'compress' : 'expand'" />
           </button>
         </div>
@@ -42,9 +43,9 @@
       <!-- Question Area -->
       <div class="question-area">
         <div class="audio-section">
-          <button @click="playQuestionAudio" class="btn-play-audio" :disabled="isPlayingAudio">
+          <button @click="handlePlayQuestionAudio" class="btn-play-audio" :disabled="isPlayingAudio">
             <span class="audio-icon">🔊</span>
-            <span>{{ isPlayingAudio ? 'Reproduciendo...' : 'Escuchar Audio' }}</span>
+            <span class="audio-text">{{ isPlayingAudio ? 'Reproduciendo...' : 'Escuchar Audio' }}</span>
           </button>
         </div>
 
@@ -181,11 +182,11 @@
         </div>
 
         <div class="results-actions" :class="{ 'dual-actions': !passedLesson || wasAlreadyCompleted }">
-          <button v-if="!passedLesson || wasAlreadyCompleted" @click="restartLesson" class="btn-retry">
+          <button v-if="!passedLesson || wasAlreadyCompleted" @click="handleRestartLesson" class="btn-retry">
             <span class="btn-icon">🔄</span>
             {{ wasAlreadyCompleted ? 'Mejorar Puntuación' : 'Reintentar Lección' }}
           </button>
-          <button @click="$emit('close')" class="btn-primary">
+          <button @click="handleClose" class="btn-primary">
             {{ passedLesson ? 'Continuar' : 'Volver al Mapa' }}
           </button>
         </div>
@@ -198,8 +199,8 @@
         <h3>¿Estás seguro?</h3>
         <p>Si sales ahora, perderás tu progreso en esta lección.</p>
         <div class="modal-actions">
-          <button @click="showExitConfirm = false" class="btn-secondary">Cancelar</button>
-          <button @click="exitGame" class="btn-danger">Salir</button>
+          <button @click="handleCancelExit" class="btn-secondary">Cancelar</button>
+          <button @click="handleExitGame" class="btn-danger">Salir</button>
         </div>
       </div>
     </div>
@@ -282,6 +283,9 @@ const {
   playCorrectSound,
   playIncorrectSound,
   playLastQuestionSound,
+  playVictorySound,
+  playGameOverSound,
+  playUIClick,
   startBackgroundMusic,
   stopBackgroundMusic,
   adjustBGMIntensity,
@@ -399,6 +403,42 @@ async function loadLesson() {
   }
 }
 
+// Wrapper functions para botones con sonido UI
+function handleClose() {
+  playUIClick();
+  emit('close');
+}
+
+function handleConfirmExit() {
+  playUIClick();
+  confirmExit();
+}
+
+function handleToggleFullscreen() {
+  playUIClick();
+  toggleFullscreen();
+}
+
+function handlePlayQuestionAudio() {
+  playUIClick();
+  playQuestionAudio();
+}
+
+function handleRestartLesson() {
+  playUIClick();
+  restartLesson();
+}
+
+function handleCancelExit() {
+  playUIClick();
+  showExitConfirm.value = false;
+}
+
+function handleExitGame() {
+  playUIClick();
+  exitGame();
+}
+
 function playQuestionAudio() {
   if (!currentQuestion.value || isPlayingAudio.value) return;
   
@@ -456,8 +496,11 @@ async function selectAnswer(side: 'left' | 'right') {
       );
     }
     
-    // Audio según combo
-    playCorrectSound(result.comboLevel);
+    // Audio según combo (NO reproducir en la última pregunta)
+    const isLastQuestion = currentQuestionIndex.value === totalQuestions.value - 1;
+    if (!isLastQuestion) {
+      playCorrectSound(result.comboLevel);
+    }
     
     // Efectos especiales para combos altos
     if (result.comboLevel >= 3) {
@@ -521,8 +564,8 @@ function nextQuestion() {
       // Reproducir sonido especial de última pregunta
       setTimeout(() => {
         playLastQuestionSound();
-        // Reproducir el audio de la pregunta después del sonido especial
-        setTimeout(() => playQuestionAudio(), 1500);
+        // Reproducir el audio de la pregunta DESPUÉS del sonido especial (y solo una vez)
+        setTimeout(() => playQuestionAudio(), 2000); // Aumentado a 2000ms para que no se solape
       }, 300);
     } else {
       // Auto-play next question audio normalmente
@@ -556,6 +599,13 @@ async function finishGame() {
     wasAlreadyCompleted.value = result.was_already_completed;
     resultMessage.value = result.message;
     
+    // Reproducir sonido según el resultado
+    if (result.passed) {
+      playVictorySound(); // Sonido de victoria si aprobó
+    } else {
+      playGameOverSound(); // Sonido de game over si no aprobó
+    }
+    
     // Mostrar el game score del intento actual
     finalScore.value = gameScore;
     gameState.value = 'finished';
@@ -575,6 +625,14 @@ async function finishGame() {
     bestScore.value = Math.round(accuracyCalc);
     finalScore.value = Math.round(accuracyCalc);
     resultMessage.value = 'Error al guardar, pero calculado localmente';
+    
+    // Reproducir sonido según el resultado calculado
+    if (passedLesson.value) {
+      playVictorySound();
+    } else {
+      playGameOverSound();
+    }
+    
     gameState.value = 'finished';
   }
 }
@@ -608,6 +666,9 @@ async function finishGameDueToErrors() {
   
   // El game score es el puntaje real del sistema de combos
   const gameScore = score.value;
+  
+  // Reproducir sonido de game over (siempre, porque terminó por errores)
+  playGameOverSound();
   
   try {
     const result = await saveLessonResult(
@@ -725,16 +786,19 @@ onUnmounted(() => {
 
 <style scoped>
 .lesson-game {
+  box-sizing: border-box;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 9999;
+  max-height: 100vh;
   min-height: 100vh;
+  max-width: 100vw;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 1rem;
-  overflow-y: auto;
+  overflow-y: none;
 }
 
 /* Estilos para pantalla completa en el contenedor principal */
@@ -783,6 +847,7 @@ onUnmounted(() => {
 /* Game Container */
 .game-container {
   max-width: 1200px;
+  max-height: 100%;
   margin: 0 auto;
   transition: all 0.3s ease;
 }
@@ -821,9 +886,10 @@ onUnmounted(() => {
 }
 
 .game-header {
+  min-height: 5%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   background: rgba(255, 255, 255, 0.95);
   padding: 1rem 1.5rem;
   border-radius: 12px;
@@ -833,9 +899,16 @@ onUnmounted(() => {
 }
 
 .header-right {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+/* Combo Counter - esquina inferior izquierda flotante */
+.game-header > .combo-counter {
+  position: fixed;
+  top: 8vh;
 }
 
 /* Score Sidebar (fixed positioning for premium videogame feel) */
@@ -846,15 +919,6 @@ onUnmounted(() => {
   transform: translateY(-50%);
   z-index: 10000;
   pointer-events: none;
-}
-
-/* Combo Counter en el centro del header */
-.game-header > .combo-counter {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 1;
 }
 
 .btn-exit {
@@ -943,6 +1007,8 @@ onUnmounted(() => {
 
 /* Question Area */
 .question-area {
+  min-height: 70vh;
+  max-height: 70vh;
   background: white;
   padding: 2rem;
   border-radius: 16px;
@@ -994,14 +1060,16 @@ onUnmounted(() => {
 /* Options */
 .options-container {
   display: grid;
+  place-items: center;
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
-  max-width: 800px;
+  max-width: 90%;
+  max-height: 50vh;
   margin: 0 auto;
 }
 
 .option-card {
-  position: relative;
+  aspect-ratio: 1 / 1;
   background: #f8f9fa;
   border: 4px solid #dee2e6;
   border-radius: 16px;
@@ -1009,6 +1077,7 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.3s;
   overflow: hidden;
+  max-height: 45vh;
 }
 
 .option-card:hover {
@@ -1558,50 +1627,149 @@ onUnmounted(() => {
 
 /* Responsive */
 @media (max-width: 768px) {
+  /* Ocultar botón de pantalla completa en móvil */
+  .btn-fullscreen {
+    display: none;
+  }
+
+  /* Botón de audio flotante sobrepuesto */
+  .audio-section {
+    position: absolute;
+    top: 10vh;
+    width: 50px;
+    z-index: 100;
+    margin: 0;
+    pointer-events: none; /* Permitir clics en elementos debajo */
+    border: #fff4e6 3px solid;
+    border-radius: 50%;
+  }
+
+  .btn-play-audio {
+    pointer-events: auto; /* Solo el botón es clickeable */
+    min-width: auto;
+    padding: 0;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-play-audio .audio-text {
+    display: none;
+  }
+
+  .btn-play-audio .audio-icon {
+    font-size: 2rem;
+    margin: 0;
+  }
+
+  /* Ocultar título de pregunta en móvil */
+  .question-title {
+    display: none;
+  }
+
+  /* Ajustes generales del header */
   .game-header {
-    flex-direction: column;
-    gap: 1rem;
+    min-height: auto;
   }
 
   .header-right {
     flex-direction: row;
     gap: 0.5rem;
-    width: 100%;
-    justify-content: space-between;
+    flex: 1;
+    justify-content: flex-end;
   }
 
   .progress-info {
     margin: 0;
-    width: 100%;
+    flex: 1;
   }
 
+  /* Combo Counter - esquina inferior izquierda flotante */
+  .game-header > .combo-counter {
+    position: fixed !important; 
+    top: 85%;
+    left: 30px;
+    z-index: 100;
+
+  }
+
+  /* Game container - sin scroll, altura completa */
+  .game-container {
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+  }
+
+  /* Question area - sin padding, ocupar todo el espacio */
+  .question-area {
+    padding: 1px;
+    min-height: 85vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Opciones - ocupar todo el espacio disponible */
   .options-container {
-    grid-template-columns: 1fr;
-    gap: 1rem;
+    display: flex;
+    flex-direction: column;
+    max-height: 90%;
+    gap: 0.3rem;
+    padding: 10px;
+    padding-top: 0.3rem;
+    margin-top: 2rem;
+    align-content: center;
   }
 
-  .option-card img {
+  .option-card {
     aspect-ratio: 1 / 1;
   }
 
+  .option-card img {
+    aspect-ratio: 1/1;
+    object-fit: cover;
+    width: 100%;
+    max-height: 40vh;
+    height: 100%;
+  }
+
+  /* Score Sidebar - más pequeño y abajo derecha */
+  .score-sidebar {
+    position: fixed;
+    top: 10%;
+    bottom: 1rem;
+    right: 1rem;
+    transform: none;
+    scale: 0.7;
+    z-index: 50;
+  }
+
+  /* Results stats */
   .results-stats {
     flex-direction: column;
     gap: 1rem;
   }
 
-  /* Score Sidebar - ajuste móvil */
-  .score-sidebar {
-    top: auto;
-    bottom: 1rem;
-    right: 1rem;
-    transform: none;
+  /* Ajustar botón de salir */
+  .btn-exit {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
   }
 
-  /* Combo Counter - ajuste móvil */
-  .game-header > .combo-counter {
-    position: static;
-    transform: none;
-    margin: 0 auto;
+  /* Question counter más pequeño */
+  .question-counter {
+    font-size: 0.85rem;
+  }
+
+  /* Progress bar más delgada */
+  .progress-bar-container {
+    height: 4px;
   }
 }
 </style>

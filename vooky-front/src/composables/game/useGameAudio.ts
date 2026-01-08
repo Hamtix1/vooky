@@ -67,7 +67,7 @@ export function useGameAudio() {
     }),
     uiClick: new Howl({
       src: ['/sounds/ui-click.mp3'],
-      volume: 0.3,
+      volume: 0.5,
       preload: true,
       onloaderror: (id, error) => console.warn('Error loading ui-click.mp3:', error)
     }),
@@ -76,6 +76,18 @@ export function useGameAudio() {
       volume: 0.8,
       preload: true,
       onloaderror: (id, error) => console.warn('Error loading ultima-pregunta.mp3:', error)
+    }),
+    victory: new Howl({
+      src: ['/sounds/victoria.mp3'],
+      volume: 0.7,
+      preload: true,
+      onloaderror: (id, error) => console.warn('Error loading victoria.mp3:', error)
+    }),
+    gameOver: new Howl({
+      src: ['/sounds/game-over.mp3'],
+      volume: 0.6,
+      preload: true,
+      onloaderror: (id, error) => console.warn('Error loading game-over.mp3:', error)
     })
   };
   
@@ -158,6 +170,7 @@ export function useGameAudio() {
    * Reproduce sonido de UI (click)
    */
   function playUIClick() {
+    initializeAudio(); // Asegurar que el audio esté inicializado
     try {
       sounds.uiClick.play();
     } catch (error) {
@@ -174,6 +187,30 @@ export function useGameAudio() {
       sounds.lastQuestion.play();
     } catch (error) {
       console.warn('Error playing last question sound:', error);
+    }
+  }
+  
+  /**
+   * Reproduce sonido de victoria (al aprobar la lección)
+   */
+  function playVictorySound() {
+    initializeAudio();
+    try {
+      sounds.victory.play();
+    } catch (error) {
+      console.warn('Error playing victory sound:', error);
+    }
+  }
+  
+  /**
+   * Reproduce sonido de game over (al reprobar la lección)
+   */
+  function playGameOverSound() {
+    initializeAudio();
+    try {
+      sounds.gameOver.play();
+    } catch (error) {
+      console.warn('Error playing game over sound:', error);
     }
   }
   
@@ -301,6 +338,8 @@ export function useGameAudio() {
     playPowerupSound,
     playUIClick,
     playLastQuestionSound,
+    playVictorySound,
+    playGameOverSound,
     
     // Background music
     startBackgroundMusic,

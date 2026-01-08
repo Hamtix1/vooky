@@ -47,9 +47,18 @@
               Gestionar Categorías
               <span class="category-count">{{ categories.length }}</span>
             </button>
+            <button class="btn-manage-categories" @click="toggleSubcategoriesPanel">
+              <font-awesome-icon :icon="['fas', 'tags']" class="btn-icon" />
+              Gestionar Subcategorías
+              <span class="category-count">{{ subcategories.length }}</span>
+            </button>
             <button class="btn-category" @click="openCategoryModal">
               <font-awesome-icon :icon="['fas', 'plus']" class="btn-icon" />
               Nueva Categoría
+            </button>
+            <button class="btn-category" @click="openSubcategoryModal">
+              <font-awesome-icon :icon="['fas', 'plus']" class="btn-icon" />
+              Nueva Subcategoría
             </button>
           </div>
         </div>
@@ -63,17 +72,38 @@
               <h3 class="panel-title">
                 <font-awesome-icon :icon="['fas', 'layer-group']" />
                 Categorías del Curso
-                <span class="count-badge-small">{{ categories.length }}</span>
+                <span class="count-badge-small">{{ filteredCategories.length }}</span>
               </h3>
               <button class="btn-close-panel" @click="toggleCategoriesPanel">
                 <font-awesome-icon :icon="['fas', 'times']" />
               </button>
             </div>
             
+            <!-- Search Bar -->
+            <div class="search-bar">
+              <div class="search-input-wrapper">
+                <font-awesome-icon :icon="['fas', 'search']" class="search-icon" />
+                <input 
+                  v-model="categorySearchQuery" 
+                  type="text" 
+                  placeholder="Buscar categorías..." 
+                  class="search-input"
+                />
+                <button 
+                  v-if="categorySearchQuery" 
+                  @click="categorySearchQuery = ''" 
+                  class="btn-clear-search"
+                  title="Limpiar búsqueda"
+                >
+                  <font-awesome-icon :icon="['fas', 'times']" />
+                </button>
+              </div>
+            </div>
+            
             <!-- Categories List -->
-            <div v-if="categories.length > 0" class="categories-grid">
+            <div v-if="filteredCategories.length > 0" class="categories-grid">
               <div 
-                v-for="(category, index) in categories" 
+                v-for="(category, index) in filteredCategories" 
                 :key="category.id" 
                 class="category-item"
                 :style="{ animationDelay: `${index * 0.05}s` }"
@@ -95,12 +125,96 @@
             </div>
             
             <!-- Empty State -->
-            <div v-else class="categories-empty">
+            <div v-else-if="categories.length === 0" class="categories-empty">
               <div class="empty-icon-small">🏷️</div>
               <p>No hay categorías creadas para este curso</p>
-              <button class="btn-add-first" @click="openCategoryModal">
-                <font-awesome-icon :icon="['fas', 'plus']" />
-                Crear Primera Categoría
+            </div>
+            
+            <!-- No Results State -->
+            <div v-else class="categories-empty">
+              <div class="empty-icon-small">🔍</div>
+              <p>No se encontraron categorías con "{{ categorySearchQuery }}"</p>
+              <button class="btn-clear-search-alt" @click="categorySearchQuery = ''">
+                Limpiar búsqueda
+              </button>
+            </div>
+          </div>
+        </div>
+      </transition>
+
+      <!-- Subcategories Panel (Collapsible) -->
+      <transition name="slide-down">
+        <div v-if="showSubcategoriesPanel" class="categories-panel">
+          <div class="panel-container">
+            <div class="panel-header">
+              <h3 class="panel-title">
+                <font-awesome-icon :icon="['fas', 'tags']" />
+                Subcategorías del Curso
+                <span class="count-badge-small">{{ filteredSubcategories.length }}</span>
+              </h3>
+              <button class="btn-close-panel" @click="toggleSubcategoriesPanel">
+                <font-awesome-icon :icon="['fas', 'times']" />
+              </button>
+            </div>
+            
+            <!-- Search Bar -->
+            <div class="search-bar">
+              <div class="search-input-wrapper">
+                <font-awesome-icon :icon="['fas', 'search']" class="search-icon" />
+                <input 
+                  v-model="subcategorySearchQuery" 
+                  type="text" 
+                  placeholder="Buscar subcategorías..." 
+                  class="search-input"
+                />
+                <button 
+                  v-if="subcategorySearchQuery" 
+                  @click="subcategorySearchQuery = ''" 
+                  class="btn-clear-search"
+                  title="Limpiar búsqueda"
+                >
+                  <font-awesome-icon :icon="['fas', 'times']" />
+                </button>
+              </div>
+            </div>
+            
+            <!-- Subcategories List -->
+            <div v-if="filteredSubcategories.length > 0" class="categories-grid">
+              <div 
+                v-for="(subcategory, index) in filteredSubcategories" 
+                :key="subcategory.id" 
+                class="category-item"
+                :style="{ animationDelay: `${index * 0.05}s` }"
+              >
+                <div class="category-icon">🏷️</div>
+                <div class="category-info">
+                  <h4 class="category-name">{{ subcategory.name }}</h4>
+                  <p v-if="subcategory.description" class="category-description">{{ subcategory.description }}</p>
+                  <span class="category-id">ID: {{ subcategory.id }}</span>
+                </div>
+                <div class="category-actions">
+                  <button class="btn-edit-cat" @click="editSubcategory(subcategory)" title="Editar">
+                    <font-awesome-icon :icon="['fas', 'pencil-alt']" />
+                  </button>
+                  <button class="btn-delete-cat" @click="deleteSubcategory(subcategory.id)" title="Eliminar">
+                    <font-awesome-icon :icon="['fas', 'trash']" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Empty State -->
+            <div v-else-if="subcategories.length === 0" class="categories-empty">
+              <div class="empty-icon-small">🏷️</div>
+              <p>No hay subcategorías creadas para este curso</p>
+            </div>
+            
+            <!-- No Results State -->
+            <div v-else class="categories-empty">
+              <div class="empty-icon-small">🔍</div>
+              <p>No se encontraron subcategorías con "{{ subcategorySearchQuery }}"</p>
+              <button class="btn-clear-search-alt" @click="subcategorySearchQuery = ''">
+                Limpiar búsqueda
               </button>
             </div>
           </div>
@@ -234,9 +348,8 @@
                       v-for="img in level.images"
                       :key="img.id"
                       class="image-card"
-                      @click="playAudio(getFullUrl(img.audio_url))"
                     >
-                      <div class="image-wrapper">
+                      <div class="image-wrapper" @click="playAudio(getFullUrl(img.audio_url))">
                         <img :src="getFullUrl(img.url)" :alt="img.description || 'Imagen'" class="level-image" />
                         <div class="image-overlay">
                           <font-awesome-icon :icon="['fas', 'volume-up']" class="play-icon" />
@@ -245,6 +358,14 @@
                       <div class="image-meta">
                         <p class="image-description">{{ img.description || 'Sin descripción' }}</p>
                         <span class="image-day">Día {{ img.dia }}</span>
+                      </div>
+                      <div class="image-actions">
+                        <button class="btn-edit-img" @click.stop="editImage(img)" title="Editar">
+                          <font-awesome-icon :icon="['fas', 'pencil-alt']" />
+                        </button>
+                        <button class="btn-delete-img" @click.stop="handleDeleteImage(level.id, img.id)" title="Eliminar">
+                          <font-awesome-icon :icon="['fas', 'trash']" />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -262,6 +383,8 @@
       :show="showUploadModal"
       :levelId="uploadLevelId as number"
       :categories="categories"
+      :subcategories="subcategories"
+      :editing-image="editingImage"
       @close="closeUploadModal"
       @uploaded="handleUploaded"
     />
@@ -274,19 +397,33 @@
       @close="closeCategoryModal"
       @created="fetchCategories"
     />
+
+    <!-- Modal para crear/editar subcategoría -->
+    <SubcategoryModal
+      v-if="showSubcategoryModal && course"
+      :show="showSubcategoryModal"
+      :course-slug="course.slug"
+      :subcategory="editingSubcategory || undefined"
+      @close="closeSubcategoryModal"
+      @created="fetchSubcategories"
+      @updated="fetchSubcategories"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/store/auth';
 import { getCourseBySlug, deleteLevel, deleteLesson, type Course } from '@/services/courseService';
 import { getCategoriesByCourse, type Category } from '@/services/categoryService';
+import { getSubcategoriesByCourse, type Subcategory } from '@/services/subcategoryService';
+import { deleteImage, type Image } from '@/services/imageService';
 import { getMyEnrollments, type Enrollment } from '@/services/enrollmentService';
 import { getFullUrl } from '@/utils/urlHelper';
 import ImageAudioUploadModal from '@/components/dashboard/ImageAudioUploadModal.vue';
 import CategoryCreateModal from '@/components/dashboard/CategoryCreateModal.vue';
+import SubcategoryModal from '@/components/dashboard/SubcategoryModal.vue';
 import CourseGameMap from '@/components/game/CourseGameMap.vue';
 
 const route = useRoute();
@@ -299,11 +436,18 @@ const error = ref<string | null>(null);
 const expandedLevelId = ref<number | null>(null);
 const showUploadModal = ref(false);
 const uploadLevelId = ref<number|null>(null);
+const editingImage = ref<Image | null>(null);
 const showCategoryModal = ref(false);
 const showCategoriesPanel = ref(false);
+const showSubcategoriesPanel = ref(false);
+const showSubcategoryModal = ref(false);
 const categories = ref<Category[]>([]);
+const subcategories = ref<Subcategory[]>([]);
+const categorySearchQuery = ref('');
+const subcategorySearchQuery = ref('');
 const audioRef = ref<HTMLAudioElement|null>(null);
 const editingCategory = ref<Category | null>(null);
+const editingSubcategory = ref<Subcategory | null>(null);
 const userEnrollment = ref<Enrollment | null>(null);
 const checkingEnrollment = ref(false);
 
@@ -311,12 +455,57 @@ const isAdmin = computed(() => auth.getUserRole === 'admin');
 const isEnrolled = computed(() => !!userEnrollment.value);
 const enrollmentStatus = computed(() => userEnrollment.value?.status || null);
 
+const filteredCategories = computed(() => {
+  const query = categorySearchQuery.value.toLowerCase().trim();
+  
+  let result = categories.value;
+  
+  // Filter by search query
+  if (query) {
+    result = result.filter(category => 
+      category.name.toLowerCase().includes(query)
+    );
+  }
+  
+  // Sort alphabetically
+  return result.slice().sort((a, b) => 
+    a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
+  );
+});
+
+const filteredSubcategories = computed(() => {
+  const query = subcategorySearchQuery.value.toLowerCase().trim();
+  
+  let result = subcategories.value;
+  
+  // Filter by search query
+  if (query) {
+    result = result.filter(subcategory => 
+      subcategory.name.toLowerCase().includes(query)
+    );
+  }
+  
+  // Sort alphabetically
+  return result.slice().sort((a, b) => 
+    a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
+  );
+});
+
 async function fetchCategories() {
   if (!isAdmin.value || !course.value) return;
   try {
     categories.value = await getCategoriesByCourse(course.value.slug);
   } catch {
     if (isAdmin.value) error.value = 'No se pudieron cargar las categorías.';
+  }
+}
+
+async function fetchSubcategories() {
+  if (!isAdmin.value || !course.value) return;
+  try {
+    subcategories.value = await getSubcategoriesByCourse(course.value.slug);
+  } catch {
+    if (isAdmin.value) error.value = 'No se pudieron cargar las subcategorías.';
   }
 }
 
@@ -329,8 +518,8 @@ async function checkEnrollment(courseId: number) {
 
   try {
     checkingEnrollment.value = true;
-    const enrollments = await getMyEnrollments();
-    const enrollment = enrollments.find(e => e.course_id === courseId);
+  const enrollments = await getMyEnrollments();
+  const enrollment = enrollments.find(e => Number(e.course_id) === Number(courseId));
     
     userEnrollment.value = enrollment || null;
     
@@ -368,19 +557,20 @@ onMounted(async () => {
 
   try {
     course.value = await getCourseBySlug(slug);
-    
     // Verificar inscripción antes de cargar el resto
     const hasAccess = await checkEnrollment(course.value.id);
-    
     if (!hasAccess) {
+      // Bloquear acceso al mapa y mostrar error
+      error.value = error.value || 'No tienes acceso a este curso.';
+      course.value = null;
       loading.value = false;
       return;
     }
-    
     await fetchCategories();
+    await fetchSubcategories();
   } catch (err) {
-    console.error("Error al cargar el curso o categorías:", err);
-    error.value = "No se pudo encontrar el curso solicitado o las categorías.";
+    console.error("Error al cargar el curso, categorías o subcategorías:", err);
+    error.value = "No se pudo encontrar el curso solicitado.";
   } finally {
     loading.value = false;
   }
@@ -392,9 +582,11 @@ const toggleLevel = (levelId: number) => {
 
 const handleDeleteLevel = async (levelId: number) => {
   if (!course.value) return;
+  console.log('courseSlug:', course.value.slug, typeof course.value.slug);
+  console.log('levelId:', levelId, typeof levelId);
   if (confirm('¿Estás seguro de que quieres eliminar este nivel y todas sus lecciones?')) {
     try {
-      await deleteLevel(course.value.id, levelId);
+      await deleteLevel(course.value.slug, levelId);
       course.value.levels = course.value.levels?.filter(level => level.id !== levelId);
     } catch (err) {
       console.error('Error al eliminar el nivel:', err);
@@ -466,6 +658,7 @@ async function reloadCourse() {
 }
 
 function openUploadModal(levelId: number) {
+  editingImage.value = null; // Resetear para crear nueva
   uploadLevelId.value = levelId;
   showUploadModal.value = true;
 }
@@ -473,6 +666,55 @@ function openUploadModal(levelId: number) {
 function closeUploadModal() {
   showUploadModal.value = false;
   uploadLevelId.value = null;
+  editingImage.value = null;
+}
+
+async function editImage(image: Image) {
+  console.log('📝 EDITANDO IMAGEN - Objeto completo:', image);
+  console.log('🔍 Detalles de la imagen:', {
+    id: image.id,
+    description: image.description,
+    dia: image.dia,
+    level_id: image.level_id,
+    category_id: image.category_id,
+    url: image.url,
+    audio_url: image.audio_url,
+    subcategories: image.subcategories,
+    'Cantidad de subcategorías': image.subcategories?.length || 0
+  });
+  
+  // IMPORTANTE: Primero asignar los valores
+  uploadLevelId.value = image.level_id;
+  editingImage.value = image;
+  
+  // Esperar a que Vue procese los cambios reactivos
+  await nextTick();
+  
+  // Abrir el modal después de que los valores estén actualizados
+  showUploadModal.value = true;
+}
+
+async function handleDeleteImage(levelId: number, imageId: number) {
+  if (!confirm('¿Estás seguro de que quieres eliminar esta imagen y su audio asociado?')) {
+    return;
+  }
+  
+  try {
+    await deleteImage(imageId);
+    
+    // Actualizar la lista de imágenes del nivel en el frontend
+    if (course.value) {
+      const level = course.value.levels?.find(l => l.id === levelId);
+      if (level && level.images) {
+        level.images = level.images.filter(img => img.id !== imageId);
+      }
+    }
+    
+    alert('Imagen eliminada correctamente');
+  } catch (err) {
+    console.error('Error al eliminar imagen:', err);
+    alert('No se pudo eliminar la imagen. Por favor, intenta de nuevo.');
+  }
 }
 
 function openCategoryModal() {
@@ -489,9 +731,28 @@ function toggleCategoriesPanel() {
   showCategoriesPanel.value = !showCategoriesPanel.value;
 }
 
+function toggleSubcategoriesPanel() {
+  showSubcategoriesPanel.value = !showSubcategoriesPanel.value;
+}
+
 function editCategory(category: Category) {
   editingCategory.value = category;
   showCategoryModal.value = true;
+}
+
+function openSubcategoryModal() {
+  editingSubcategory.value = null; // Reset para crear nueva
+  showSubcategoryModal.value = true;
+}
+
+function closeSubcategoryModal() {
+  showSubcategoryModal.value = false;
+  editingSubcategory.value = null;
+}
+
+function editSubcategory(subcategory: Subcategory) {
+  editingSubcategory.value = subcategory;
+  showSubcategoryModal.value = true;
 }
 
 async function deleteCategory(categoryId: number) {
@@ -508,6 +769,25 @@ async function deleteCategory(categoryId: number) {
   } catch (err) {
     console.error('Error al eliminar categoría:', err);
     alert('No se pudo eliminar la categoría. Es posible que tenga imágenes asociadas.');
+  }
+}
+
+async function deleteSubcategory(subcategoryId: number) {
+  if (!confirm('¿Estás seguro de que quieres eliminar esta subcategoría? Esto podría afectar las imágenes asociadas.')) {
+    return;
+  }
+  
+  if (!course.value) return;
+  
+  try {
+    const { deleteSubcategory: deleteSubcategorySvc } = await import('@/services/subcategoryService');
+    await deleteSubcategorySvc(course.value.slug, subcategoryId);
+    await fetchSubcategories();
+    // Mostrar mensaje de éxito
+    alert('Subcategoría eliminada correctamente');
+  } catch (err) {
+    console.error('Error al eliminar subcategoría:', err);
+    alert('No se pudo eliminar la subcategoría. Es posible que tenga imágenes asociadas.');
   }
 }
 
@@ -818,6 +1098,86 @@ function playAudio(audioUrl: string) {
   box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
 }
 
+/* Search Bar */
+.search-bar {
+  margin-bottom: 1.5rem;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  color: #95a5a6;
+  font-size: 1rem;
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.9rem 1rem 0.9rem 3rem;
+  border: 2px solid #e8eaf6;
+  border-radius: 12px;
+  font-size: 1rem;
+  color: #2c3e50;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.search-input::placeholder {
+  color: #bdc3c7;
+}
+
+.btn-clear-search {
+  position: absolute;
+  right: 0.5rem;
+  background: #ecf0f1;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #7f8c8d;
+  transition: all 0.2s ease;
+}
+
+.btn-clear-search:hover {
+  background: #bdc3c7;
+  color: #2c3e50;
+  transform: scale(1.1);
+}
+
+.btn-clear-search-alt {
+  margin-top: 1rem;
+  padding: 0.7rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-clear-search-alt:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
 /* Categories Grid */
 .categories-grid {
   display: grid;
@@ -875,6 +1235,13 @@ function playAudio(audioUrl: string) {
   font-weight: 700;
   color: #2c3e50;
   margin: 0 0 0.3rem 0;
+}
+
+.category-description {
+  font-size: 0.9rem;
+  color: #7f8c8d;
+  margin: 0.2rem 0 0.3rem 0;
+  line-height: 1.4;
 }
 
 .category-id {
@@ -1518,6 +1885,47 @@ function playAudio(audioUrl: string) {
   border-radius: 12px;
   font-size: 0.75rem;
   font-weight: 700;
+}
+
+.image-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.btn-edit-img,
+.btn-delete-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.85rem;
+}
+
+.btn-edit-img {
+  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+  color: white;
+}
+
+.btn-edit-img:hover {
+  transform: scale(1.2) rotate(15deg);
+  box-shadow: 0 4px 12px rgba(243, 156, 18, 0.4);
+}
+
+.btn-delete-img {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+}
+
+.btn-delete-img:hover {
+  transform: scale(1.2);
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
 }
 
 /* Responsive */

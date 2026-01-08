@@ -76,7 +76,7 @@ onMounted(() => {
   font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: 2px;
-  color: #95a5a6;
+  color: #fdfdfd;
   margin-bottom: 0.5rem;
   text-transform: uppercase;
 }

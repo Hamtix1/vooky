@@ -2,7 +2,7 @@
   <div v-if="show" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="upload-title">
     <div class="modal-content">
       <div class="modal-header">
-        <h2 id="upload-title">Subir Imagen y Audio</h2>
+        <h2 id="upload-title">{{ isEditing ? 'Editar Imagen y Audio' : 'Subir Imagen y Audio' }}</h2>
         <button class="icon-button" @click="close" aria-label="Cerrar">
           ✕
         </button>
@@ -11,7 +11,11 @@
       <form @submit.prevent="handleSubmit" class="modal-body">
         <!-- Image uploader -->
         <div class="uploader">
-          <label class="uploader-label">Imagen <span class="required">*</span></label>
+          <label class="uploader-label">
+            Imagen 
+            <span v-if="!isEditing" class="required">*</span>
+            <span v-else class="optional">(dejar vacío para mantener la actual)</span>
+          </label>
           <div
             class="dropzone"
             :class="{ 'is-dragover': imageDragging }"
@@ -34,7 +38,8 @@
               </div>
               <div v-else class="preview">
                 <img :src="imagePreviewUrl" alt="Vista previa de la imagen" />
-                <div class="file-meta">{{ imageFile?.name }}</div>
+                <div v-if="imageFile" class="file-meta">{{ imageFile.name }}</div>
+                <div v-else-if="isEditing" class="file-meta">Imagen actual (click para cambiar)</div>
               </div>
             </div>
           </div>
@@ -43,7 +48,11 @@
 
         <!-- Audio uploader -->
         <div class="uploader">
-          <label class="uploader-label">Audio <span class="required">*</span></label>
+          <label class="uploader-label">
+            Audio 
+            <span v-if="!isEditing" class="required">*</span>
+            <span v-else class="optional">(dejar vacío para mantener el actual)</span>
+          </label>
           <div
             class="dropzone"
             :class="{ 'is-dragover': audioDragging }"
@@ -66,7 +75,8 @@
               </div>
               <div v-else class="preview audio-preview">
                 <audio :src="audioPreviewUrl" controls preload="metadata"></audio>
-                <div class="file-meta">{{ audioFile?.name }}</div>
+                <div v-if="audioFile" class="file-meta">{{ audioFile.name }}</div>
+                <div v-else-if="isEditing" class="file-meta">Audio actual (click para cambiar)</div>
               </div>
             </div>
           </div>
@@ -85,10 +95,93 @@
           </div>
           <div class="form-group full">
             <label for="category">Categoría <span class="required">*</span></label>
-            <select id="category" v-model.number="categoryId" required>
-              <option value="" disabled>Selecciona una categoría</option>
-              <option v-for="cat in props.categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-            </select>
+            
+            <!-- Search input -->
+            <div class="category-search-wrapper">
+              <div class="search-input-container">
+                <span class="search-icon">🔍</span>
+                <input 
+                  v-model="categorySearchQuery" 
+                  type="text" 
+                  placeholder="Buscar categoría..." 
+                  class="category-search-input"
+                  @focus="showCategoryDropdown = true"
+                />
+                <button 
+                  v-if="categorySearchQuery" 
+                  type="button"
+                  @click="clearCategorySearch" 
+                  class="clear-search-btn"
+                  title="Limpiar búsqueda"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <!-- Custom dropdown -->
+              <div 
+                v-if="showCategoryDropdown" 
+                class="category-dropdown"
+                @click.stop
+              >
+                <div 
+                  v-if="filteredCategories.length > 0"
+                  class="category-options"
+                >
+                  <div
+                    v-for="cat in filteredCategories"
+                    :key="cat.id"
+                    class="category-option"
+                    :class="{ selected: categoryId === cat.id }"
+                    @click="selectCategory(cat.id, cat.name)"
+                  >
+                    <span class="category-icon">🏷️</span>
+                    <span class="category-name">{{ cat.name }}</span>
+                    <span v-if="categoryId === cat.id" class="check-icon">✓</span>
+                  </div>
+                </div>
+                <div v-else class="no-results">
+                  <span class="no-results-icon">🔍</span>
+                  <p>No se encontraron categorías</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Selected category display -->
+            <div v-if="selectedCategoryName" class="selected-category">
+              <span class="selected-label">Seleccionada:</span>
+              <span class="selected-name">{{ selectedCategoryName }}</span>
+            </div>
+          </div>
+
+          <!-- Subcategorías (opcional, multiselección) -->
+          <div class="form-group full">
+            <label for="subcategories">Subcategorías (opcional)</label>
+            <div class="subcategories-selector">
+              <div v-if="availableSubcategories.length === 0" class="no-subcategories">
+                <span class="info-icon">ℹ️</span>
+                <p>No hay subcategorías disponibles para esta categoría</p>
+              </div>
+              <div v-else class="subcategories-grid">
+                <label
+                  v-for="subcat in availableSubcategories"
+                  :key="subcat.id"
+                  class="subcategory-checkbox"
+                  :class="{ selected: selectedSubcategoryIds.includes(subcat.id) }"
+                >
+                  <input
+                    type="checkbox"
+                    :value="subcat.id"
+                    v-model="selectedSubcategoryIds"
+                  />
+                  <span class="subcategory-label">{{ subcat.name }}</span>
+                  <span v-if="subcat.description" class="subcategory-desc">{{ subcat.description }}</span>
+                </label>
+              </div>
+              <div v-if="selectedSubcategoryIds.length > 0" class="selected-subcategories">
+                <span class="selected-count">{{ selectedSubcategoryIds.length }} seleccionada(s)</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -104,7 +197,7 @@
           <button type="button" class="btn-secondary" @click="close" :disabled="loading">Cancelar</button>
           <button type="submit" class="btn-primary" :disabled="loading || !canSubmit">
             <span v-if="loading" class="spinner" aria-hidden="true"></span>
-            {{ loading ? 'Subiendo...' : 'Subir' }}
+            {{ loading ? (isEditing ? 'Actualizando...' : 'Subiendo...') : (isEditing ? 'Actualizar' : 'Subir') }}
           </button>
         </div>
       </form>
@@ -113,14 +206,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, defineProps, defineEmits, onBeforeUnmount, computed } from 'vue';
+import { ref, watch, defineProps, defineEmits, onBeforeUnmount, onMounted, computed } from 'vue';
 import api from '@/config/api';
+import type { Subcategory } from '@/services/subcategoryService';
+import type { Image } from '@/services/imageService';
+import { getFullUrl } from '@/utils/urlHelper';
 
 // Strongly-typed props for better template inference
 const props = defineProps<{
   show: boolean;
   levelId: number;
   categories: { id: number; name: string }[];
+  subcategories: Subcategory[];
+  editingImage?: Image | null;
 }>();
 const emit = defineEmits(['close', 'uploaded']);
 
@@ -135,6 +233,10 @@ const audioPreviewUrl = ref<string | null>(null);
 const description = ref('');
 const dia = ref<number | null>(null);
 const categoryId = ref<number|null>(null);
+const categorySearchQuery = ref('');
+const showCategoryDropdown = ref(false);
+const selectedCategoryName = ref('');
+const selectedSubcategoryIds = ref<number[]>([]);
 const loading = ref(false);
 const error = ref('');
 const success = ref(false);
@@ -144,9 +246,53 @@ const audioDragging = ref(false);
 const imageError = ref('');
 const audioError = ref('');
 
+const isEditing = computed(() => !!props.editingImage);
+
 const canSubmit = computed(() => {
+  // En modo edición, no se requieren archivos nuevos (pueden ser opcionales)
+  if (isEditing.value) {
+    return !!categoryId.value && !!dia.value && !loading.value;
+  }
+  // En modo creación, se requieren ambos archivos
   return !!imageFile.value && !!audioFile.value && !!categoryId.value && !!dia.value && !loading.value;
 });
+
+const filteredCategories = computed(() => {
+  const query = categorySearchQuery.value.toLowerCase().trim();
+  
+  let result = props.categories;
+  
+  // Filter by search query
+  if (query) {
+    result = result.filter(category => 
+      category.name.toLowerCase().includes(query)
+    );
+  }
+  
+  // Sort alphabetically
+  return result.slice().sort((a, b) => 
+    a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
+  );
+});
+
+// Todas las subcategorías del curso ordenadas alfabéticamente
+const availableSubcategories = computed(() => {
+  return props.subcategories
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+});
+
+function selectCategory(id: number, name: string) {
+  categoryId.value = id;
+  selectedCategoryName.value = name;
+  showCategoryDropdown.value = false;
+  categorySearchQuery.value = '';
+}
+
+function clearCategorySearch() {
+  categorySearchQuery.value = '';
+  showCategoryDropdown.value = true;
+}
 
 function onImageChange(e: Event) {
   console.log('onImageChange triggered', e);
@@ -253,7 +399,9 @@ function triggerAudioFile() {
 async function handleSubmit() {
   error.value = '';
   success.value = false;
-  if (!imageFile.value || !audioFile.value) {
+  
+  // Validaciones
+  if (!isEditing.value && (!imageFile.value || !audioFile.value)) {
     error.value = 'Debes seleccionar una imagen y un audio.';
     return;
   }
@@ -265,23 +413,51 @@ async function handleSubmit() {
     error.value = 'La categoría es obligatoria.';
     return;
   }
+  
   loading.value = true;
   try {
     const formData = new FormData();
-    formData.append('url', imageFile.value);
-    formData.append('audio_url', audioFile.value);
+    
+    // Solo agregar archivos si se seleccionaron nuevos
+    if (imageFile.value) formData.append('url', imageFile.value);
+    if (audioFile.value) formData.append('audio_url', audioFile.value);
+    
     formData.append('level_id', String(props.levelId));
-  if (description.value) formData.append('description', description.value);
-  if (dia.value !== null && dia.value !== undefined) formData.append('dia', String(dia.value));
+    if (description.value) formData.append('description', description.value);
+    if (dia.value !== null && dia.value !== undefined) formData.append('dia', String(dia.value));
     formData.append('category_id', String(categoryId.value));
+    
+    // Agregar subcategorías seleccionadas
+    if (selectedSubcategoryIds.value.length > 0) {
+      selectedSubcategoryIds.value.forEach(id => {
+        formData.append('subcategory_ids[]', String(id));
+      });
+    }
+    
     uploadProgress.value = 0;
-    await api.post('/images', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: (evt) => {
-        if (!evt.total) return;
-        uploadProgress.value = Math.min(99, (evt.loaded / evt.total) * 100);
-      }
-    });
+    
+    let response;
+    if (isEditing.value && props.editingImage) {
+      // Modo edición: PUT con method spoofing
+      formData.append('_method', 'PUT');
+      response = await api.post(`/images/${props.editingImage.id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (evt) => {
+          if (!evt.total) return;
+          uploadProgress.value = Math.min(99, (evt.loaded / evt.total) * 100);
+        }
+      });
+    } else {
+      // Modo creación: POST
+      response = await api.post('/images', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (evt) => {
+          if (!evt.total) return;
+          uploadProgress.value = Math.min(99, (evt.loaded / evt.total) * 100);
+        }
+      });
+    }
+    
     uploadProgress.value = 100;
     success.value = true;
     emit('uploaded');
@@ -291,7 +467,7 @@ async function handleSubmit() {
   } catch (err: unknown) {
     type ErrorResponse = { response?: { data?: { message?: string } } };
     const maybe = err as ErrorResponse;
-    error.value = maybe.response?.data?.message ?? 'Error al subir los archivos.';
+    error.value = maybe.response?.data?.message ?? 'Error al procesar los archivos.';
   } finally {
     loading.value = false;
   }
@@ -318,6 +494,10 @@ function close() {
   description.value = '';
   dia.value = null;
   categoryId.value = null;
+  categorySearchQuery.value = '';
+  showCategoryDropdown.value = false;
+  selectedCategoryName.value = '';
+  selectedSubcategoryIds.value = [];
   error.value = '';
   success.value = false;
   uploadProgress.value = 0;
@@ -328,12 +508,119 @@ function close() {
 }
 
 watch(() => props.show, (val) => {
-  if (!val) close();
+  console.log('🔔 Modal show cambió:', val, 'editingImage:', props.editingImage);
+  if (!val) {
+    close();
+  } else if (val && props.editingImage) {
+    // Modo edición: cargar datos de la imagen
+    console.log('✨ Llamando a loadImageData()...');
+    loadImageData();
+  } else if (val && !props.editingImage) {
+    console.log('➕ Modo creación (sin editingImage)');
+  }
+});
+
+// Watcher adicional para editingImage - se ejecuta cuando cambia
+watch(() => props.editingImage, (newImage) => {
+  console.log('🔄 editingImage cambió:', newImage);
+  if (newImage && props.show) {
+    console.log('✨ Cargando datos desde watcher de editingImage...');
+    loadImageData();
+  }
+}, { immediate: false });
+
+// Hook onMounted - se ejecuta cuando el componente se monta
+onMounted(() => {
+  console.log('🚀 Modal montado - editingImage:', props.editingImage, 'show:', props.show);
+  if (props.editingImage && props.show) {
+    console.log('✨ Cargando datos desde onMounted...');
+    loadImageData();
+  }
+});
+
+// Cargar datos de la imagen para edición
+function loadImageData() {
+  if (!props.editingImage) return;
+  
+  const img = props.editingImage;
+  console.log('🔄 MODAL - Cargando datos de imagen para edición:', img);
+  console.log('📋 Categorías disponibles:', props.categories);
+  
+  // Cargar campos básicos
+  description.value = img.description || '';
+  dia.value = img.dia;
+  categoryId.value = img.category_id;
+  
+  console.log('📝 Valores cargados:', {
+    description: description.value,
+    dia: dia.value,
+    categoryId: categoryId.value
+  });
+  
+  // Buscar el nombre de la categoría
+  console.log('🔍 Buscando categoría con ID:', img.category_id, 'en', props.categories.length, 'categorías');
+  const category = props.categories.find(c => c.id === img.category_id);
+  if (category) {
+    selectedCategoryName.value = category.name;
+    console.log('✅ 🏷️ Categoría encontrada:', category.name);
+  } else {
+    console.error('❌ Categoría NO encontrada para ID:', img.category_id);
+    console.error('❌ Categorías disponibles:', props.categories.map(c => ({ id: c.id, name: c.name })));
+  }
+  
+  // Cargar subcategorías seleccionadas
+  if (img.subcategories && img.subcategories.length > 0) {
+    selectedSubcategoryIds.value = img.subcategories.map(sub => sub.id);
+    console.log('✅ Subcategorías cargadas:', {
+      ids: selectedSubcategoryIds.value,
+      nombres: img.subcategories.map(sub => sub.name)
+    });
+  } else {
+    selectedSubcategoryIds.value = [];
+    console.log('⚠️ No hay subcategorías para esta imagen');
+  }
+  
+  // Mostrar preview de la imagen existente
+  imagePreviewUrl.value = getFullUrl(img.url);
+  audioPreviewUrl.value = getFullUrl(img.audio_url);
+  
+  console.log('📸 URLs generadas:', {
+    imagen: imagePreviewUrl.value,
+    audio: audioPreviewUrl.value
+  });
+  console.log('🔊 URL de audio:', audioPreviewUrl.value);
+  console.log('📝 Descripción:', description.value);
+  console.log('📅 Día:', dia.value);
+  console.log('🏷️ Categoría ID:', categoryId.value, '- Nombre:', selectedCategoryName.value);
+  
+  // No se cargan archivos porque son opcionales en edición
+  imageFile.value = null;
+  audioFile.value = null;
+}
+
+// Close dropdown when clicking outside
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as HTMLElement;
+  if (!target.closest('.category-search-wrapper')) {
+    showCategoryDropdown.value = false;
+  }
+};
+
+// Add/remove click listener
+watch(showCategoryDropdown, (isOpen) => {
+  if (isOpen) {
+    setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 0);
+  } else {
+    document.removeEventListener('click', handleClickOutside);
+  }
 });
 
 onBeforeUnmount(() => {
   if (imagePreviewUrl.value) URL.revokeObjectURL(imagePreviewUrl.value);
   if (audioPreviewUrl.value) URL.revokeObjectURL(audioPreviewUrl.value);
+  document.removeEventListener('click', handleClickOutside);
 });
 </script>
 
@@ -439,6 +726,13 @@ onBeforeUnmount(() => {
 .required {
   color: #e74c3c;
   font-size: 1.1rem;
+}
+
+.optional {
+  color: #7f8c8d;
+  font-size: 0.85rem;
+  font-style: italic;
+  font-weight: 400;
 }
 
 .dropzone {
@@ -584,6 +878,255 @@ onBeforeUnmount(() => {
   border-color: #667eea;
   box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
   transform: translateY(-1px);
+}
+
+/* Category Search Styles */
+.category-search-wrapper {
+  position: relative;
+}
+
+.search-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  font-size: 1rem;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.category-search-input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.75rem !important;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.category-search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+.clear-search-btn {
+  position: absolute;
+  right: 0.5rem;
+  background: #ecf0f1;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #7f8c8d;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+}
+
+.clear-search-btn:hover {
+  background: #bdc3c7;
+  color: #2c3e50;
+  transform: scale(1.1);
+}
+
+.category-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 100;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.category-options {
+  padding: 0.5rem;
+}
+
+.category-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.category-option:hover {
+  background: #f8f9fa;
+}
+
+.category-option.selected {
+  background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+  border-left: 3px solid #667eea;
+}
+
+.category-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.category-name {
+  flex: 1;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.check-icon {
+  color: #667eea;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.no-results {
+  padding: 2rem;
+  text-align: center;
+  color: #95a5a6;
+}
+
+.no-results-icon {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 0.5rem;
+  opacity: 0.5;
+}
+
+.no-results p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.selected-category {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, #667eea10 0%, #764ba210 100%);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-left: 3px solid #667eea;
+}
+
+.selected-label {
+  color: #7f8c8d;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.selected-name {
+  color: #2c3e50;
+  font-weight: 600;
+  flex: 1;
+}
+
+/* Subcategories Styles */
+.subcategories-selector {
+  margin-top: 0.5rem;
+}
+
+.no-subcategories {
+  padding: 1.5rem;
+  text-align: center;
+  background: #f8f9fa;
+  border-radius: 8px;
+  color: #6b7280;
+}
+
+.info-icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.5rem;
+  opacity: 0.6;
+}
+
+.no-subcategories p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.subcategories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.subcategory-checkbox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.subcategory-checkbox:hover {
+  border-color: #667eea;
+  background: #f8f9fa;
+}
+
+.subcategory-checkbox.selected {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #667eea10 0%, #764ba210 100%);
+  border-width: 2px;
+}
+
+.subcategory-checkbox input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.subcategory-label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.95rem;
+}
+
+.subcategory-desc {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.selected-subcategories {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #eff6ff;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.selected-count {
+  color: #667eea;
+  font-weight: 600;
+  font-size: 0.9rem;
 }
 
 .inline-error { 

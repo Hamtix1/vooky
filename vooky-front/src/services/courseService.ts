@@ -201,11 +201,11 @@ export const updateLevel = async (courseSlug: string, levelId: number, levelData
 /**
  * Elimina un nivel de un curso.
  */
-export const deleteLevel = async (courseId: number, levelId: number): Promise<void> => {
+export const deleteLevel = async (courseSlug: string, levelId: number): Promise<void> => {
   try {
-    await api.delete(`/courses/${courseId}/levels/${levelId}`);
+    await api.delete(`/courses/${courseSlug}/levels/${levelId}`);
   } catch (error) {
-    console.error(`Error al eliminar el nivel ${levelId} del curso ${courseId}:`, error);
+    console.error(`Error al eliminar el nivel ${levelId} del curso ${courseSlug}:`, error);
     throw error;
   }
 };

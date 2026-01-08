@@ -19,6 +19,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { getImageUrl } from '@/utils/urlHelper';
 
 interface Badge {
   id: number;
@@ -91,10 +92,20 @@ function createConfetti() {
 }
 
 function getBadgeImageUrl(image: string): string {
-  if (image.startsWith('http')) {
-    return image;
+  if (!image) return '';
+  let path = image;
+  if (image.startsWith('/storage')) {
+    path = image;
+  } else if (image.startsWith('storage')) {
+    path = '/' + image;
+  } else if (image.startsWith('/badges')) {
+    path = '/storage' + image;
+  } else if (image.startsWith('badges')) {
+    path = '/storage/' + image;
+  } else if (!image.startsWith('http')) {
+    path = '/storage/badges/' + image;
   }
-  return `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}/storage/${image}`;
+  return getImageUrl(path);
 }
 </script>
 

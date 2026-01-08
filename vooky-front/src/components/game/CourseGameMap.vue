@@ -96,6 +96,21 @@
           </defs>
         </svg>
 
+        <!-- Separadores de nivel -->
+        <div
+          v-for="separator in levelSeparators"
+          :key="'separator-' + separator.levelId"
+          class="level-separator"
+          :style="{ top: separator.y + 'px' }"
+        >
+          <div class="separator-line"></div>
+          <div class="separator-label">
+            <span class="level-icon">🏆</span>
+            <span class="level-name">{{ separator.levelName }}</span>
+          </div>
+          <div class="separator-line"></div>
+        </div>
+
         <!-- Nodos de lecciones mejorados -->
         <div
           v-for="(node, index) in lessonNodes"
@@ -113,6 +128,11 @@
         >
           <!-- Halo/Brillo para nodo actual -->
           <div v-if="node.current" class="node-halo"></div>
+          
+          <!-- Número de lección visible -->
+          <div class="lesson-number-badge">
+            Lección {{ index + 1 }}
+          </div>
           
           <!-- Número o icono del nodo -->
           <div class="node-circle">
@@ -194,6 +214,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import LessonGame from '@/components/game/LessonGame.vue';
 import AppLogo from '@/components/common/AppLogo.vue';
 import { getLessonProgress } from '@/services/lessonGameService';
+import api from '@/config/api';
 import type { Course, Lesson as BaseLesson } from '@/services/courseService';
 
 // Interfaz para elementos con soporte de pantalla completa
@@ -228,12 +249,19 @@ const props = defineProps<{
 
 defineEmits(['back']);
 
+interface LevelSeparator {
+  levelId: number;
+  levelName: string;
+  y: number;
+}
+
 // State
 const gameMapContainer = ref<HTMLElement | null>(null);
 const mapContainer = ref<HTMLElement | null>(null);
 const scrollContainer = ref<HTMLElement | null>(null);
 const currentNodeRef = ref<HTMLElement | null>(null);
 const lessonNodes = ref<LessonNode[]>([]);
+const levelSeparators = ref<LevelSeparator[]>([]);
 const showGame = ref(false);
 const selectedLessonId = ref<number | null>(null);
 const svgWidth = ref(800);
@@ -279,21 +307,31 @@ const overallProgress = computed(() =>
 const totalGameScore = computed(() => {
   return lessonNodes.value
     .filter(node => node.completed && node.gameScore !== null)
-    .reduce((sum, node) => sum + (node.gameScore || 0), 0);
+    .reduce((sum, node) => sum + Number(node.gameScore || 0), 0);
 });
 
 // Puntaje máximo posible (100 por cada lección completada)
-const maxPossibleScore = computed(() => completedLessons.value * 100);
 
 const pathData = computed(() => {
   if (lessonNodes.value.length < 2) return '';
   
+  let path = '';
+  let currentLevelId = lessonNodes.value[0].lesson.level_id;
+  
   // Empezar desde el centro del primer nodo
-  let path = `M ${lessonNodes.value[0].x + 35} ${lessonNodes.value[0].y + 35}`;
+  path = `M ${lessonNodes.value[0].x + 35} ${lessonNodes.value[0].y + 35}`;
   
   for (let i = 1; i < lessonNodes.value.length; i++) {
     const current = lessonNodes.value[i];
     const prev = lessonNodes.value[i - 1];
+    
+    // Detectar cambio de nivel - cortar el camino y reiniciar
+    if (current.lesson.level_id !== currentLevelId) {
+      currentLevelId = current.lesson.level_id;
+      // Reiniciar el camino desde el nuevo nodo
+      path += ` M ${current.x + 35} ${current.y + 35}`;
+      continue;
+    }
     
     // Centro de cada nodo
     const prevCenterX = prev.x + 35;
@@ -348,12 +386,23 @@ const progressPathData = computed(() => {
   
   if (lastCompletedIndex < 0) return '';
   
+  let path = '';
+  let currentLevelId = lessonNodes.value[0].lesson.level_id;
+  
   // Empezar desde el centro del primer nodo
-  let path = `M ${lessonNodes.value[0].x + 35} ${lessonNodes.value[0].y + 35}`;
+  path = `M ${lessonNodes.value[0].x + 35} ${lessonNodes.value[0].y + 35}`;
   
   for (let i = 1; i <= lastCompletedIndex; i++) {
     const current = lessonNodes.value[i];
     const prev = lessonNodes.value[i - 1];
+    
+    // Detectar cambio de nivel - cortar el camino y reiniciar
+    if (current.lesson.level_id !== currentLevelId) {
+      currentLevelId = current.lesson.level_id;
+      // Reiniciar el camino desde el nuevo nodo
+      path += ` M ${current.x + 35} ${current.y + 35}`;
+      continue;
+    }
     
     // Centro de cada nodo
     const prevCenterX = prev.x + 35;
@@ -397,48 +446,65 @@ const progressPathData = computed(() => {
 async function loadLessonProgress() {
   isLoading.value = true; // Activar indicador de carga
   
-  const nodes: LessonNode[] = [];
-  let previousCompleted = true;
-  
-  for (let i = 0; i < allLessons.value.length; i++) {
-    const lesson = allLessons.value[i];
+  try {
+    // OPTIMIZACIÓN: Obtener progreso de TODAS las lecciones en UNA sola llamada
+    // En lugar de hacer N requests (uno por lección), hacemos 1
+    const lessonIds = allLessons.value.map(lesson => lesson.id);
     
-    // Obtener progreso de la lección
-    let progress = null;
+    let progressMap: Record<number, any> = {};
+    
+    // Intentar usar el nuevo endpoint batch si existe
     try {
-      progress = await getLessonProgress(lesson.id);
+      const batchResponse = await api.post('/lessons/batch/progress', { lesson_ids: lessonIds });
+      progressMap = batchResponse.data.data || {};
     } catch (err) {
-      console.error(`Error loading progress for lesson ${lesson.id}:`, err);
+      // Fallback a llamadas individuales si el endpoint no existe
+      console.warn('Batch progress endpoint not available, falling back to individual calls:', err);
+      for (const lesson of allLessons.value) {
+        try {
+          progressMap[lesson.id] = await getLessonProgress(lesson.id);
+        } catch (e) {
+          console.error(`Error loading progress for lesson ${lesson.id}:`, e);
+        }
+      }
     }
     
-    const completed = progress?.completed || false;
-    const available = i === 0 || previousCompleted;
+    const nodes: LessonNode[] = [];
+    let previousCompleted = true;
     
-    nodes.push({
-      lesson,
-      x: 0,
-      y: 0,
-      completed,
-      available,
-      current: !completed && available,
-      gameScore: progress?.game_score || null,
-      accuracy: progress?.accuracy || null,
-      correctAnswers: progress?.correct_answers || null,
-      totalQuestions: progress?.total_questions || null
-    });
+    for (let i = 0; i < allLessons.value.length; i++) {
+      const lesson = allLessons.value[i];
+      const progress = progressMap[lesson.id];
+      const completed = progress?.completed || false;
+      const available = i === 0 || previousCompleted;
+      
+      nodes.push({
+        lesson,
+        x: 0,
+        y: 0,
+        completed,
+        available,
+        current: !completed && available,
+        gameScore: progress?.game_score || null,
+        accuracy: progress?.accuracy || null,
+        correctAnswers: progress?.correct_answers || null,
+        totalQuestions: progress?.total_questions || null
+      });
+      previousCompleted = completed;
+    }
     
-    previousCompleted = completed;
+    lessonNodes.value = nodes;
+    
+    await nextTick();
+    calculateNodePositions();
+  } catch (err) {
+    console.error('Error loading lesson progress:', err);
+  } finally {
+    // Pequeño delay para asegurar que todo se renderice
+    setTimeout(() => {
+      isLoading.value = false; // Desactivar indicador de carga
+    }, 500);
   }
-  
-  lessonNodes.value = nodes;
-  
-  await nextTick();
-  calculateNodePositions();
-  
-  // Pequeño delay para asegurar que todo se renderice
-  setTimeout(() => {
-    isLoading.value = false; // Desactivar indicador de carga
-  }, 500);
 }
 
 function calculateNodePositions() {
@@ -450,12 +516,32 @@ function calculateNodePositions() {
   const centerSpacing = 110; // Distancia reducida para nodos del centro
   const horizontalOffset = 200; // Desplazamiento izquierda/derecha
   const centerX = containerWidth / 2 - 35;
+  const levelSeparatorHeight = 80; // Espacio para los separadores de nivel
   
   let currentY = 100;
+  let currentLevelId: number | null = null;
+  const separators: LevelSeparator[] = [];
   
   svgWidth.value = containerWidth;
   
   lessonNodes.value.forEach((node, index) => {
+    // Detectar cambio de nivel y agregar separador ANTES del nodo
+    if (currentLevelId !== null && node.lesson.level_id !== currentLevelId) {
+      // Buscar el nombre del nivel
+      const level = props.course.levels?.find(l => l.id === node.lesson.level_id);
+      if (level) {
+        // Colocar el separador en la posición actual (antes de incrementar Y)
+        separators.push({
+          levelId: node.lesson.level_id,
+          levelName: level.title,
+          y: currentY - 20 // Posicionar un poco arriba para darle espacio
+        });
+      }
+      
+      // Agregar espacio para el separador
+      currentY += levelSeparatorHeight;
+    }
+    currentLevelId = node.lesson.level_id;
     // Posición X: patrón izquierda → centro → derecha → centro
     const position = index % 4;
     let xOffset = 0;
@@ -489,6 +575,9 @@ function calculateNodePositions() {
       currentY += verticalSpacing; // Espacio normal
     }
   });
+  
+  // Asignar los separadores calculados
+  levelSeparators.value = separators;
   
   // Calcular altura total del SVG basado en la última posición Y
   svgHeight.value = currentY + 100;
@@ -963,6 +1052,86 @@ onUnmounted(() => {
 @keyframes path-glow {
   0%, 100% { filter: drop-shadow(0 0 12px rgba(139, 195, 74, 0.8)); }
   50% { filter: drop-shadow(0 0 20px rgba(255, 85, 152, 1)); }
+}
+
+/* Separadores de nivel */
+.level-separator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 0 60px;
+  z-index: 5;
+}
+
+.separator-line {
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(to right, transparent, rgba(139, 195, 74, 0.5), transparent);
+  border-radius: 2px;
+}
+
+.separator-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #8BC34A 0%, #29B6F6 100%);
+  border-radius: 30px;
+  box-shadow: 0 4px 15px rgba(139, 195, 74, 0.4);
+  white-space: nowrap;
+  animation: separator-glow 3s ease-in-out infinite;
+}
+
+@keyframes separator-glow {
+  0%, 100% {
+    box-shadow: 0 4px 15px rgba(139, 195, 74, 0.4);
+  }
+  50% {
+    box-shadow: 0 4px 25px rgba(139, 195, 74, 0.7);
+  }
+}
+
+.level-icon {
+  font-size: 1.2rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.level-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.5px;
+}
+
+/* Badge con número de lección */
+.lesson-number-badge {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: white;
+  box-shadow: 0 3px 10px rgba(102, 126, 234, 0.4);
+  white-space: nowrap;
+  z-index: 15;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.lesson-node:hover .lesson-number-badge,
+.lesson-node.current .lesson-number-badge {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-5px);
 }
 
 .lesson-node {
