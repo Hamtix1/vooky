@@ -83,6 +83,12 @@ class Course extends Model
         return $this->hasMany(Category::class);
     }
 
+    // Subcategorías del curso
+    public function subcategories()
+    {
+        return $this->hasMany(Subcategory::class);
+    }
+
     // Insignias del curso
     public function badges()
     {

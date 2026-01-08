@@ -22,6 +22,15 @@ class ImageResource extends JsonResource
             'dia' => $this->dia,
             'category_id' => $this->category_id,
             'level_id' => $this->level_id,
+            'subcategories' => $this->whenLoaded('subcategories', function() {
+                return $this->subcategories->map(function($subcategory) {
+                    return [
+                        'id' => $subcategory->id,
+                        'name' => $subcategory->name,
+                        'description' => $subcategory->description,
+                    ];
+                });
+            }),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];

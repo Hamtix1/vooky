@@ -64,9 +64,19 @@ class LevelController extends Controller
      */
     public function destroy(Course $course, Level $level)
     {
-        // Laravel ya se encargó de todo. Solo eliminamos.
+        \Log::info('Intentando eliminar nivel', [
+            'course_id' => $course->id,
+            'level_id' => $level->id,
+            'level_course_id' => $level->course_id,
+            'course_match' => $level->course_id == $course->id,
+            'route_course_id' => $course->id,
+            'route_level_id' => $level->id,
+        ]);
         $level->delete();
-
+        \Log::info('Nivel eliminado exitosamente', [
+            'level_id' => $level->id,
+            'course_id' => $course->id,
+        ]);
         return response()->json(['message' => 'Nivel eliminado correctamente']);
     }
 }

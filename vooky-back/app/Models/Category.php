@@ -26,4 +26,12 @@ class Category extends Model
     {
         return $this->hasMany(Image::class);
     }
+
+    /**
+     * Una categoría puede tener muchas subcategorías
+     */
+    public function subcategories()
+    {
+        return $this->hasMany(Subcategory::class);
+    }
 }

@@ -204,7 +204,9 @@
     <LessonGame 
       v-if="showGame && selectedLessonId" 
       :lesson-id="selectedLessonId"
+      :all-lessons="allLessons"
       @close="handleGameClose"
+      @next-lesson="handleNextLesson"
     />
   </div>
 </template>
@@ -455,11 +457,20 @@ async function loadLessonProgress() {
     
     // Intentar usar el nuevo endpoint batch si existe
     try {
+      console.log('🔵 Intentando batch progress con IDs:', lessonIds);
       const batchResponse = await api.post('/lessons/batch/progress', { lesson_ids: lessonIds });
+      console.log('✅ Batch progress exitoso:', batchResponse.data);
       progressMap = batchResponse.data.data || {};
-    } catch (err) {
+    } catch (err: any) {
       // Fallback a llamadas individuales si el endpoint no existe
-      console.warn('Batch progress endpoint not available, falling back to individual calls:', err);
+      console.warn('⚠️ Batch progress endpoint falló, usando fallback:', {
+        status: err?.response?.status,
+        statusText: err?.response?.statusText,
+        error: err?.response?.data?.error,
+        message: err?.response?.data?.message,
+        fullError: err
+      });
+      
       for (const lesson of allLessons.value) {
         try {
           progressMap[lesson.id] = await getLessonProgress(lesson.id);
@@ -640,6 +651,12 @@ async function handleGameClose() {
   
   // Recargar progreso después de jugar
   await loadLessonProgress();
+}
+
+async function handleNextLesson(nextLessonId: number) {
+  selectedLessonId.value = nextLessonId;
+  // No cerramos el juego, solo cambiamos la lección
+  await loadLessonProgress(); // Recargar progreso actualizado
 }
 
 // Funciones de pantalla completa

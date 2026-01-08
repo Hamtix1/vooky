@@ -181,13 +181,21 @@
           <p>🌟 ¡Mejoraste tu puntuación!</p>
         </div>
 
-        <div class="results-actions" :class="{ 'dual-actions': !passedLesson || wasAlreadyCompleted }">
+        <div class="results-actions" :class="{ 
+          'dual-actions': !passedLesson || wasAlreadyCompleted,
+          'triple-actions': passedLesson && nextLesson
+        }">
           <button v-if="!passedLesson || wasAlreadyCompleted" @click="handleRestartLesson" class="btn-retry">
             <span class="btn-icon">🔄</span>
             {{ wasAlreadyCompleted ? 'Mejorar Puntuación' : 'Reintentar Lección' }}
           </button>
-          <button @click="handleClose" class="btn-primary">
-            {{ passedLesson ? 'Continuar' : 'Volver al Mapa' }}
+          <button v-if="passedLesson && nextLesson" @click="handleNextLesson" class="btn-success">
+            <span class="btn-icon">➡️</span>
+            Siguiente Lección
+          </button>
+          <button @click="handleBackToMap" class="btn-primary">
+            <span class="btn-icon">🗺️</span>
+            Volver al Mapa
           </button>
         </div>
       </div>
@@ -250,9 +258,18 @@ interface FullscreenDocument extends Document {
 
 const props = defineProps<{
   lessonId: number;
+  allLessons?: Array<{ id: number; [key: string]: any }>;
 }>();
 
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'next-lesson']);
+
+// Computed para siguiente lección
+const nextLesson = computed(() => {
+  if (!props.allLessons || props.allLessons.length === 0) return null;
+  const currentIndex = props.allLessons.findIndex(l => l.id === props.lessonId);
+  if (currentIndex === -1 || currentIndex === props.allLessons.length - 1) return null;
+  return props.allLessons[currentIndex + 1];
+});
 
 // Composables del nuevo sistema
 const {
@@ -439,6 +456,18 @@ function handleExitGame() {
   exitGame();
 }
 
+function handleNextLesson() {
+  if (!nextLesson.value) return;
+  playUIClick();
+  emit('next-lesson', nextLesson.value.id);
+}
+
+function handleBackToMap() {
+  playUIClick();
+  emit('close');
+}
+
+// Funciones relacionadas con toggle fullscreen
 function playQuestionAudio() {
   if (!currentQuestion.value || isPlayingAudio.value) return;
   
@@ -1147,22 +1176,38 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  width: 100%;
   padding: 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .results-content {
   background: white;
-  padding: 3rem;
+  padding: 3rem 2rem;
   border-radius: 24px;
   text-align: center;
-  max-width: 600px;
+  max-width: 800px;
+  width: 100%;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideInUp 0.5s ease;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .results-title {
   color: #2c3e50;
-  font-size: 2.5rem;
+  font-size: clamp(2rem, 5vw, 3rem);
   margin-bottom: 2rem;
+  line-height: 1.2;
 }
 
 /* Game Over Message Styles */
@@ -1507,10 +1552,60 @@ onUnmounted(() => {
   gap: 1rem;
   justify-content: center;
   flex-wrap: wrap;
+  width: 100%;
 }
 
 .results-actions.dual-actions {
   justify-content: center;
+}
+
+.results-actions.triple-actions {
+  justify-content: center;
+  gap: 1rem;
+}
+
+.results-actions button {
+  flex: 1;
+  min-width: 200px;
+  max-width: 280px;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+}
+
+.btn-success:active {
+  transform: translateY(0);
+}
+
+.btn-success .btn-icon {
+  font-size: 1.3rem;
+  display: inline-block;
+  animation: slideRight 1s ease infinite;
+}
+
+@keyframes slideRight {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(5px); }
 }
 
 .btn-retry {
@@ -1525,6 +1620,7 @@ onUnmounted(() => {
   transition: all 0.3s ease;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
 }
@@ -1770,6 +1866,87 @@ onUnmounted(() => {
   /* Progress bar más delgada */
   .progress-bar-container {
     height: 4px;
+  }
+
+  /* Results screen responsive */
+  .results-content {
+    padding: 2rem 1rem;
+    max-width: 100%;
+  }
+
+  .results-title {
+    font-size: clamp(1.5rem, 4vw, 2rem);
+  }
+
+  .score-circle {
+    width: 140px;
+    height: 140px;
+  }
+
+  .score-value {
+    font-size: 2rem;
+  }
+
+  .score-label {
+    font-size: 0.9rem;
+  }
+
+  .score-sublabel {
+    font-size: 0.75rem;
+  }
+
+  .results-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .results-actions button {
+    min-width: 100%;
+    max-width: 100%;
+    font-size: 1rem;
+    padding: 0.875rem 1.5rem;
+  }
+
+  .results-stats {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .stat-item {
+    width: 100%;
+  }
+
+  .backend-message {
+    font-size: 0.95rem;
+    padding: 1rem;
+  }
+
+  .new-high-score-badge,
+  .game-over-message,
+  .failed-message,
+  .passed-badge {
+    padding: 1rem;
+  }
+
+  .trophy-icon,
+  .game-over-icon,
+  .failed-icon,
+  .badge-icon {
+    font-size: 2.5rem;
+  }
+
+  .trophy-text,
+  .game-over-text,
+  .failed-text,
+  .badge-text {
+    font-size: 1.2rem;
+  }
+
+  .trophy-subtitle,
+  .game-over-subtitle,
+  .failed-subtitle,
+  .badge-subtitle {
+    font-size: 0.95rem;
   }
 }
 </style>

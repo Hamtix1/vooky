@@ -18,6 +18,7 @@ use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\BadgeController;
 use App\Http\Controllers\StatsController;
 use App\Http\Controllers\TuitionFeeController;
+use App\Http\Controllers\SubcategoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -73,6 +74,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('levels.lessons', LessonController::class);
     Route::apiResource('images', ImageController::class);
     Route::apiResource('audios', AudioController::class);
+    
+    // Gestión de subcategorías (CRUD completo)
+    Route::get('courses/{course}/subcategories', [SubcategoryController::class, 'index']);
+    Route::post('courses/{course}/subcategories', [SubcategoryController::class, 'store']);
+    Route::put('courses/{course}/subcategories/{subcategory}', [SubcategoryController::class, 'update']);
+    Route::delete('courses/{course}/subcategories/{subcategory}', [SubcategoryController::class, 'destroy']);
+    
     // Route::apiResource('questions', QuestionController::class); // TODO: Crear controlador
     
     // Gestión de insignias (CRUD completo para admin)
@@ -122,6 +130,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('lessons/{lesson}/complete', [EnrollmentController::class, 'completeLesson'])->middleware('enrolled');
     Route::post('lessons/{lesson}/uncomplete', [EnrollmentController::class, 'uncompleteLesson'])->middleware('enrolled');
     Route::get('courses/{course}/progress', [EnrollmentController::class, 'courseProgress']);
+    
+    // OPTIMIZACIÓN: Obtener progreso de MÚLTIPLES lecciones en una sola llamada
+    // NO requiere 'enrolled' porque es solo lectura
+    Route::post('lessons/batch/progress', [LessonGameController::class, 'getBatchProgress']);
     
     // Rutas del juego de lecciones - REQUIEREN INSCRIPCIÓN ACTIVA
     Route::middleware('enrolled')->group(function () {

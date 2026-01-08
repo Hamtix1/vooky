@@ -12,10 +12,20 @@ class Image extends Model
     use HasFactory;
 
     protected $fillable = ['url', 'audio_url', 'description', 'level_id', 'dia', 'category_id', 'type'];
+    
     public function category()
     {
         return $this->belongsTo(Category::class);
     }
+
+    /**
+     * Relación: Una imagen puede tener muchas subcategorías
+     */
+    public function subcategories()
+    {
+        return $this->belongsToMany(Subcategory::class, 'image_subcategory');
+    }
+    
     protected $appends = ['file_url', 'audio_file_url'];
 
     public function level()

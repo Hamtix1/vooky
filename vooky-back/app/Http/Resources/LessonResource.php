@@ -20,6 +20,7 @@ class LessonResource extends JsonResource
             'content_type' => $this->content_type,
             'content' => $this->content,
             'level_id' => $this->level_id,
+            'dia' => $this->dia,
         ];
     }
 }
