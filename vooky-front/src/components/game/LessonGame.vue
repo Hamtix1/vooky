@@ -94,17 +94,8 @@
     <div v-else-if="gameState === 'finished'" class="game-results">
       <div class="results-content">
         <h1 class="results-title">
-          {{ finishedByErrors ? '❌ Game Over' : (passedLesson ? '🎉 ¡Lección Aprobada!' : '😔 Lección No Aprobada') }}
+          {{ finishedByErrors ? '❌ Game Over' : (passedLesson ? '¡Aprobaste!' : '😔 Lección No Aprobada') }}
         </h1>
-        
-        <!-- Mensaje del backend -->
-        <div v-if="resultMessage" class="backend-message" :class="{ 
-          'success': isNewHighScore || (passedLesson && !wasAlreadyCompleted),
-          'info': wasAlreadyCompleted,
-          'warning': !passedLesson && !finishedByErrors
-        }">
-          <p>{{ resultMessage }}</p>
-        </div>
         
         <!-- Badge de nuevo récord -->
         <div v-if="isNewHighScore && !finishedByErrors" class="new-high-score-badge">
@@ -129,15 +120,6 @@
           <p class="failed-subtitle">Tu porcentaje: {{ accuracyPercentage }}%</p>
         </div>
         
-        <!-- Badge de aprobado -->
-        <div v-else class="passed-badge">
-          <div class="badge-icon">✨</div>
-          <p class="badge-text">{{ accuracyPercentage }}% de aciertos</p>
-          <p v-if="wasAlreadyCompleted && !isNewHighScore" class="badge-subtitle">
-            Mejor puntuación: {{ bestScore }} pts
-          </p>
-        </div>
-        
         <div class="score-circle" :class="scoreClass">
           <div class="score-value">{{ finalScore.toLocaleString() }}</div>
           <div class="score-label">PUNTOS</div>
@@ -145,28 +127,32 @@
         </div>
 
         <div class="results-stats">
-          <div class="stat-item">
-            <div class="stat-icon correct">✓</div>
-            <div class="stat-info">
-              <div class="stat-value">{{ correctAnswers }}</div>
-              <div class="stat-label">Correctas</div>
+          <div class="stats-row">
+            <div class="stat-item">
+              <div class="stat-icon correct">✓</div>
+              <div class="stat-info">
+                <div class="stat-value">{{ correctAnswers }}</div>
+                <div class="stat-label">Correctas</div>
+              </div>
             </div>
-          </div>
 
-          <div class="stat-item">
-            <div class="stat-icon incorrect">✗</div>
-            <div class="stat-info">
-              <div class="stat-value">{{ incorrectAnswers }}</div>
-              <div class="stat-label">Incorrectas</div>
+            <div class="stat-item">
+              <div class="stat-icon incorrect">✗</div>
+              <div class="stat-info">
+                <div class="stat-value">{{ incorrectAnswers }}</div>
+                <div class="stat-label">Incorrectas</div>
+              </div>
             </div>
           </div>
           
-          <!-- Mostrar mejor puntuación si es diferente -->
-          <div v-if="bestScore > finalScore && !finishedByErrors" class="stat-item best-score">
-            <div class="stat-icon trophy">🏆</div>
-            <div class="stat-info">
-              <div class="stat-value">{{ bestScore.toLocaleString() }} pts</div>
-              <div class="stat-label">Tu Récord</div>
+          <!-- Mostrar mejor puntuación si es diferente - fila separada -->
+          <div v-if="bestScore > finalScore && !finishedByErrors" class="best-score-row">
+            <div class="stat-item best-score">
+              <div class="stat-icon trophy">🏆</div>
+              <div class="stat-info">
+                <div class="stat-value">{{ bestScore.toLocaleString() }} pts</div>
+                <div class="stat-label">Tu Récord</div>
+              </div>
             </div>
           </div>
         </div>
@@ -1472,9 +1458,24 @@ onUnmounted(() => {
 
 .results-stats {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stats-row {
+  display: flex;
   justify-content: center;
   gap: 3rem;
-  margin-bottom: 2rem;
+  width: 100%;
+}
+
+.best-score-row {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 0.5rem;
 }
 
 .stat-item {
@@ -1908,8 +1909,16 @@ onUnmounted(() => {
   }
 
   .results-stats {
+    gap: 0.75rem;
+  }
+
+  .stats-row {
     flex-direction: column;
     gap: 0.75rem;
+  }
+
+  .best-score-row {
+    margin-top: 0;
   }
 
   .stat-item {
